@@ -166,13 +166,14 @@ export default function HomePage() {
           className="absolute inset-x-0 top-0 -z-10 h-full"
           aria-hidden="true"
         />
-        <div className="flex max-w-6xl flex-col gap-10 px-6 pb-20 pt-24 text-left sm:px-8 sm:pt-28 lg:pt-4">
+        <div className="flex max-w-[70%] flex-col gap-10 px-6 pb-20 pt-24 text-left sm:px-8 sm:pt-28 lg:pt-4">
           {/* <span className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground backdrop-blur">
             One Mind. Infinite Tools.
           </span> */}
           <div className="space-y-6">
             <h1 className="text-4xl font-normal tracking-tight sm:text-5xl lg:text-9xl">
-              Sé la persona fundadora, el equipo y el lanzamiento — Syngulr vuelve infinita una sola mente.
+              Sé la persona fundadora, el equipo y el lanzamiento — Syngulr
+              vuelve infinita una sola mente.
             </h1>
             {/* <p className="mx-auto max-w-3xl text-base text-muted-foreground sm:text-lg">
               Syngulr equips solo builders, creators, and innovators with an
