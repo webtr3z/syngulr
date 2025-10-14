@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { ChatPanel } from "@/components/panels/ChatPanel";
 import { toMermaid } from "@/lib/mermaid";
 import type { FlowDocument, FlowNode } from "@/lib/schema";
 import { useFlowStore } from "@/lib/store";
@@ -71,17 +72,17 @@ export function Inspector({ node }: InspectorProps) {
   const handleCopy = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast.success("Copied to clipboard");
+      toast.success("Copiado al portapapeles");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to copy");
+      toast.error("No se pudo copiar");
     }
   };
 
   const inspectorContent = node ? (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="inspector-title">Title</Label>
+        <Label htmlFor="inspector-title">Título</Label>
         <Input
           id="inspector-title"
           value={title}
@@ -97,7 +98,7 @@ export function Inspector({ node }: InspectorProps) {
           }}
           onBlur={() => {
             if (title.trim().length === 0) {
-              const fallback = "Untitled";
+              const fallback = "Sin título";
               setTitle(fallback);
               updateNodeData(node.id, (data) => ({
                 ...data,
@@ -105,11 +106,11 @@ export function Inspector({ node }: InspectorProps) {
               }));
             }
           }}
-          placeholder="Name this box"
+          placeholder="Ponle un nombre a esta caja"
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="inspector-description">Description</Label>
+        <Label htmlFor="inspector-description">Descripción</Label>
         <Textarea
           id="inspector-description"
           value={description}
@@ -121,7 +122,7 @@ export function Inspector({ node }: InspectorProps) {
               description: value.length > 0 ? value : undefined,
             }));
           }}
-          placeholder="Optional details"
+          placeholder="Detalles opcionales"
           rows={4}
         />
       </div>
@@ -136,7 +137,7 @@ export function Inspector({ node }: InspectorProps) {
   ) : (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Select a box to edit its title and description.
+        Selecciona una caja para editar su título y descripción.
       </p>
       <PreviewPanel
         previewTab={previewTab}
@@ -164,25 +165,9 @@ export function Inspector({ node }: InspectorProps) {
         </Card>
       </TabsContent>
       <TabsContent value="chat" className="mt-4">
-        <Card className="w-full">
-          <CardContent className="space-y-4 pt-6">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Chat with Assistant (coming soon). We&apos;ll connect this panel to OpenAI to help you generate or modify flows conversationally.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="chat-input">Message</Label>
-              <Textarea
-                id="chat-input"
-                placeholder="Describe what you would like to build..."
-                rows={4}
-                className="resize-y"
-              />
-              <Button size="sm" className="mt-2" disabled>
-                Send (coming soon)
-              </Button>
-            </div>
+        <Card className="flex h-[calc(100vh-240px)] w-full flex-col">
+          <CardContent className="flex h-full flex-col gap-4 pt-6">
+            <ChatPanel />
           </CardContent>
         </Card>
       </TabsContent>
@@ -209,13 +194,13 @@ function PreviewPanel({
     <Card className="w-full border bg-muted/30">
       <CardContent className="space-y-4 pt-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium text-muted-foreground">Code Preview</p>
+          <p className="text-sm font-medium text-muted-foreground">Vista previa del código</p>
           <Button
             size="sm"
             variant="outline"
             onClick={() => onCopy(previewTab === "json" ? jsonPreview : mermaidPreview)}
           >
-            Copy
+            Copiar
           </Button>
         </div>
         <Tabs value={previewTab} onValueChange={(value) => onPreviewTabChange(value as "json" | "mermaid")}>

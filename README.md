@@ -52,7 +52,7 @@ pnpm test:e2e     # Playwright e2e flow (see note below)
 
 ## Environment Variables
 
-`NEXT_PUBLIC_OPENAI_API_KEY` is optional and only required if you want to enable the flow editor assistant chat experience.
+`OPENAI_API_KEY` es obligatorio para habilitar el chat del asistente (no exponerlo en el cliente). `OPENAI_MODEL` es opcional y permite sobreescribir el modelo usado (por defecto `gpt-4.1`). `NEXT_PUBLIC_OPENAI_API_KEY` es opcional y sólo se usa para características experimentales del editor.
 
 ## SSR Considerations
 

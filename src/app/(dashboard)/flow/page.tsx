@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import FlowCanvas from "./FlowCanvas";
 
 export const metadata: Metadata = {
-  title: "Flowchart Editor",
-  description: "Create, connect, and organize flowchart boxes.",
+  title: "Editor de diagramas de flujo",
+  description: "Crea, conecta y organiza las cajas de tu flujo.",
 };
 
 export default function FlowPage() {

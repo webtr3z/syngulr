@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { MainNav } from "@/components/sidebar/MainNav";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
-import { PanelLeftClose, PanelRightClose, Workflow } from "lucide-react";
+import { PanelLeftClose, PanelRightClose } from "lucide-react";
 import Link from "next/link";
 
 interface MainLayoutProps {
@@ -33,18 +33,18 @@ export function MainLayout({ children }: MainLayoutProps) {
             <Link
               href="/"
               className={cn(
-                "flex items-center gap-3 text-sm font-semibold",
+                "flex items-center gap-3 text-sm font-semibold tracking-tight transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 collapsed && "justify-center gap-0",
               )}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Workflow className="h-4 w-4" />
-              </div>
-              {!collapsed && <span className="tracking-wide">Dashboard</span>}
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-foreground">
+                sy
+              </span>
+              {!collapsed && <span className="text-2xl font-medium">syngulr</span>}
             </Link>
             <button
               type="button"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
               className={cn(
                 "rounded-md border border-border bg-background/70 p-1.5 text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 collapsed && "w-full justify-center p-2",

@@ -11,7 +11,7 @@ import {
   ReactFlowProvider,
   type Connection,
 } from "@xyflow/react";
-import { useEffect, useMemo, useRef, useCallback } from "react";
+import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { toast } from "sonner";
 
@@ -23,15 +23,19 @@ import {
   documentSchema,
   type FlowEdge as FlowEdgeType,
   type FlowNode as FlowNodeType,
+  type FlowNodeData,
 } from "@/lib/schema";
 import { useFlowStore } from "@/lib/store";
 import { toMermaid } from "@/lib/mermaid";
+import { cn } from "@/lib/utils";
 import { useReactFlow } from "@xyflow/react";
 import {
   Panel,
   PanelGroup,
   PanelResizeHandle,
+  type ImperativePanelHandle,
 } from "react-resizable-panels";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 
 const nodeTypes = {
   flowNode: FlowNode,
@@ -40,6 +44,8 @@ const nodeTypes = {
 function FlowCanvasInner() {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const rf = useReactFlow();
+  const inspectorPanelRef = useRef<ImperativePanelHandle | null>(null);
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const {
     nodes,
     edges,
@@ -136,30 +142,33 @@ function FlowCanvasInner() {
     );
   };
 
-  const handleAddNode = useCallback(() => {
-    const viewportBounds = wrapperRef.current?.getBoundingClientRect();
-    const clientCenter = {
-      x:
-        (viewportBounds?.left ?? 0) +
-        (viewportBounds?.width ?? window.innerWidth) / 2,
-      y:
-        (viewportBounds?.top ?? 0) +
-        (viewportBounds?.height ?? window.innerHeight) / 2,
-    };
-    const basePosition = rf.screenToFlowPosition(clientCenter);
-    const offsetFactor = nodes.length;
-    const adjustedPosition = {
-      x: basePosition.x + offsetFactor * 80,
-      y: basePosition.y + offsetFactor * 40,
-    };
-    addNode(adjustedPosition);
-  }, [addNode, nodes.length, rf]);
+  const handleAddNode = useCallback(
+    (variant: FlowNodeData["variant"] = "standard") => {
+      const viewportBounds = wrapperRef.current?.getBoundingClientRect();
+      const clientCenter = {
+        x:
+          (viewportBounds?.left ?? 0) +
+          (viewportBounds?.width ?? window.innerWidth) / 2,
+        y:
+          (viewportBounds?.top ?? 0) +
+          (viewportBounds?.height ?? window.innerHeight) / 2,
+      };
+      const basePosition = rf.screenToFlowPosition(clientCenter);
+      const offsetFactor = nodes.length;
+      const adjustedPosition = {
+        x: basePosition.x + offsetFactor * 80,
+        y: basePosition.y + offsetFactor * 40,
+      };
+      addNode(adjustedPosition, { variant });
+    },
+    [addNode, nodes.length, rf],
+  );
 
   const handleConnect = useCallback(
     (connection: Connection) => {
       const edge = onConnect(connection);
       if (!edge) {
-        toast.error("Cannot create that connection.");
+        toast.error("No se puede crear esa conexión.");
       }
     },
     [onConnect]
@@ -168,14 +177,14 @@ function FlowCanvasInner() {
   const handleAutoLayout = useCallback(() => {
     runLayout()
       .then(() => {
-        toast.success("Layout applied");
+        toast.success("Diseño aplicado");
         requestAnimationFrame(() => {
           rf.fitView({ duration: 500, padding: 0.2 });
         });
       })
       .catch((error) => {
         console.error(error);
-        toast.error("Failed to apply layout");
+        toast.error("No se pudo aplicar el diseño");
       });
   }, [rf, runLayout]);
 
@@ -191,7 +200,7 @@ function FlowCanvasInner() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success("Diagram exported");
+    toast.success("Diagrama exportado");
   }, [exportDocument]);
 
   const handleExportMermaid = useCallback(() => {
@@ -206,21 +215,21 @@ function FlowCanvasInner() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success("Mermaid exported");
+    toast.success("Diagrama Mermaid exportado");
   }, [exportDocument, layoutDirection]);
 
   const handleImport = useCallback(
     (payload: string) => {
       const parsed = documentSchema.safeParse(JSON.parse(payload));
       if (!parsed.success) {
-        toast.error("Import failed: invalid JSON");
+        toast.error("No se pudo importar: JSON inválido");
         return;
       }
       importDocument(parsed.data);
       requestAnimationFrame(() => {
         rf.fitView({ duration: 400, padding: 0.2 });
       });
-      toast.success("Diagram imported");
+      toast.success("Diagrama importado");
     },
     [importDocument, rf]
   );
@@ -229,11 +238,11 @@ function FlowCanvasInner() {
     resetDiagram()
       .then(() => {
         importDocument({ nodes: [], edges: [] });
-        toast.success("Diagram reset");
+        toast.success("Diagrama reiniciado");
       })
       .catch((error) => {
         console.error(error);
-        toast.error("Failed to reset diagram");
+        toast.error("No se pudo reiniciar el diagrama");
       });
   }, [importDocument]);
 
@@ -284,12 +293,29 @@ function FlowCanvasInner() {
     return () => window.removeEventListener("keydown", handler);
   }, [deleteSelection, handleAddNode, redo, rf, undo]);
 
+  const toggleButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handleToggleInspector = useCallback(() => {
+    const panel = inspectorPanelRef.current;
+    if (!panel) {
+      return;
+    }
+    if (inspectorCollapsed) {
+      panel.expand();
+      setInspectorCollapsed(false);
+    } else {
+      panel.collapse();
+      setInspectorCollapsed(true);
+    }
+  }, [inspectorCollapsed]);
+
   return (
-    <PanelGroup
-      autoSaveId="flow-layout"
-      direction="horizontal"
-      className="flex h-full min-h-dvh bg-background"
-    >
+    <div className="relative flex h-full min-h-dvh bg-background">
+      <PanelGroup
+        autoSaveId="flow-layout"
+        direction="horizontal"
+        className="flex h-full w-full"
+      >
       <Panel defaultSize={72} minSize={40} className="relative">
         <div className="relative h-full" ref={wrapperRef}>
           <div className="pointer-events-none absolute left-4 top-4 z-20 flex flex-wrap gap-2">
@@ -348,26 +374,58 @@ function FlowCanvasInner() {
           {nodes.length === 0 ? (
             <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
               <div className="pointer-events-auto rounded-lg border bg-background/80 px-6 py-4 text-center shadow-lg">
-                <h2 className="text-lg font-semibold">Start your flow</h2>
+                <h2 className="text-lg font-semibold">Comienza tu flujo</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Click &ldquo;Add Box&rdquo; or press N to create the first box.
+                  Haz clic en &ldquo;Agregar bloque&rdquo; o presiona N para crear la primera caja.
                 </p>
               </div>
             </div>
           ) : null}
         </div>
       </Panel>
-      <PanelResizeHandle className="relative flex w-2 items-center justify-center bg-border hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="h-10 w-0.5 rounded-full bg-border" />
+      <PanelResizeHandle
+        className={cn(
+          "relative flex w-2 items-center justify-center bg-border hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          inspectorCollapsed && "bg-transparent hover:bg-transparent",
+        )}
+      >
+        <button
+          type="button"
+          onClick={handleToggleInspector}
+          ref={toggleButtonRef}
+          className="pointer-events-auto absolute -left-14 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/90 text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={inspectorCollapsed ? "Expandir panel lateral" : "Contraer panel lateral"}
+        >
+          {inspectorCollapsed ? (
+            <PanelRightOpen className="h-4 w-4" />
+          ) : (
+            <PanelRightClose className="h-4 w-4" />
+          )}
+        </button>
+        <div
+          className={cn(
+            "h-10 w-0.5 rounded-full bg-border transition-opacity",
+            inspectorCollapsed && "opacity-0",
+          )}
+        />
       </PanelResizeHandle>
       <Panel
+        ref={inspectorPanelRef}
         defaultSize={28}
-        minSize={20}
-        className="border-l border-border bg-background/90 p-4"
+        minSize={inspectorCollapsed ? 0 : 20}
+        collapsedSize={0}
+        collapsible
+        onCollapse={() => setInspectorCollapsed(true)}
+        onExpand={() => setInspectorCollapsed(false)}
+        className={cn(
+          "border-l border-border bg-background/90 p-4 transition-all duration-200",
+          inspectorCollapsed && "!pointer-events-none !border-transparent !bg-transparent !p-0 opacity-0",
+        )}
       >
         <Inspector node={selectedNode} />
       </Panel>
-    </PanelGroup>
+      </PanelGroup>
+    </div>
   );
 }
 

@@ -31,7 +31,7 @@ describe("flow store", () => {
     const node = useFlowStore.getState().addNode({ x: 10, y: 20 });
     const { nodes } = useFlowStore.getState();
     expect(nodes).toHaveLength(1);
-    expect(node.data.title).toBe("New box");
+    expect(node.data.title).toBe("Caja nueva");
   });
 
   it("updates node data and supports undo/redo", () => {
@@ -39,16 +39,16 @@ describe("flow store", () => {
     const node = store.addNode({ x: 0, y: 0 });
     useFlowStore.getState().updateNodeData(node.id, (data) => ({
       ...data,
-      title: "Updated",
+      title: "Actualizado",
     }));
 
-    expect(useFlowStore.getState().nodes[0]?.data.title).toBe("Updated");
+    expect(useFlowStore.getState().nodes[0]?.data.title).toBe("Actualizado");
 
     useFlowStore.getState().undo();
-    expect(useFlowStore.getState().nodes[0]?.data.title).toBe("New box");
+    expect(useFlowStore.getState().nodes[0]?.data.title).toBe("Caja nueva");
 
     useFlowStore.getState().redo();
-    expect(useFlowStore.getState().nodes[0]?.data.title).toBe("Updated");
+    expect(useFlowStore.getState().nodes[0]?.data.title).toBe("Actualizado");
   });
 
   it("creates edges and prevents self connections", () => {

@@ -8,17 +8,17 @@ import { Home, Settings, Workflow } from "lucide-react";
 const navItems = [
   {
     href: "/",
-    label: "Home",
+    label: "Inicio",
     icon: Home,
   },
   {
     href: "/flow",
-    label: "Flowchart",
+    label: "Diagrama",
     icon: Workflow,
   },
   {
     href: "/settings",
-    label: "Settings",
+    label: "Configuración",
     icon: Settings,
   },
 ];

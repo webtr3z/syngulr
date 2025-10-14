@@ -2,8 +2,12 @@ import { Node, Edge } from "@xyflow/react";
 import { z } from "zod";
 
 export const nodeDataSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "Se requiere un título"),
   description: z.string().optional(),
+  variant: z
+    .enum(["standard", "condition"])
+    .catch("standard")
+    .default("standard"),
 });
 
 export const positionSchema = z.object({
@@ -35,6 +39,7 @@ export const documentSchema = z.object({
   edges: z.array(edgeSchema),
 });
 
+export type FlowNodeVariant = z.infer<typeof nodeDataSchema>["variant"];
 export type FlowNodeData = z.infer<typeof nodeDataSchema>;
 export type FlowNodeSchema = z.infer<typeof nodeSchema>;
 export type FlowEdgeSchema = z.infer<typeof edgeSchema>;

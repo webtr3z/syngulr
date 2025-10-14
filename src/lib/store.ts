@@ -18,6 +18,7 @@ import {
   type FlowEdge,
   type FlowNode,
   type FlowNodeData,
+  type FlowNodeVariant,
 } from "@/lib/schema";
 
 const HISTORY_LIMIT = 50;
@@ -182,13 +183,18 @@ export const useFlowStore = create<FlowStoreState>()((set, get) => ({
 
   addNode: (position, data) => {
     const id = createNodeId();
+    const variant: FlowNodeVariant = data?.variant ?? "standard";
+    const defaultTitle =
+      data?.title ??
+      (variant === "condition" ? "Condicional if/else" : "Caja nueva");
     const node: FlowNode = {
       id,
       type: "flowNode",
       position,
       data: {
-        title: data?.title ?? "New box",
+        title: defaultTitle,
         description: data?.description,
+        variant,
       },
     };
 
@@ -208,14 +214,17 @@ export const useFlowStore = create<FlowStoreState>()((set, get) => ({
       return null;
     }
 
+    const variant = source.data.variant ?? "standard";
+
     return get().addNode(
       {
         x: source.position.x + NEW_NODE_OFFSET.x,
         y: source.position.y + NEW_NODE_OFFSET.y,
       },
       {
-        title: `${source.data.title} Copy`,
+        title: `${source.data.title} (copia)`,
         description: source.data.description,
+        variant,
       },
     );
   },

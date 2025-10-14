@@ -18,13 +18,15 @@ const streamToString = async (stream: Readable | null) => {
 test("user can create, connect, edit, and export a flow", async ({ page }) => {
   await page.goto("/flow");
 
-  const addButton = page.getByRole("button", { name: "Add Box" });
+  const addButton = page.getByRole("button", { name: "Agregar bloque" });
 
   await addButton.click();
-  await page.getByLabel("Title").fill("Start");
+  await page.getByRole("menuitem", { name: "Caja vacía" }).click();
+  await page.getByLabel("Título").fill("Inicio");
 
   await addButton.click();
-  await page.getByLabel("Title").fill("End");
+  await page.getByRole("menuitem", { name: "Caja vacía" }).click();
+  await page.getByLabel("Título").fill("Fin");
 
   const sourceHandle = page.locator('[data-testid$="-handle-source"]').first();
   const targetHandle = page.locator('[data-testid$="-handle-target"]').nth(1);
@@ -33,7 +35,8 @@ test("user can create, connect, edit, and export a flow", async ({ page }) => {
   await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
+  await page.getByRole("button", { name: "Exportar" }).click();
+  await page.getByRole("menuitem", { name: "Exportar JSON" }).click();
   const download = await downloadPromise;
   const content = await streamToString(await download.createReadStream());
   const parsed = JSON.parse(content);
@@ -41,5 +44,5 @@ test("user can create, connect, edit, and export a flow", async ({ page }) => {
   expect(parsed.nodes).toHaveLength(2);
   expect(parsed.edges).toHaveLength(1);
   const titles = parsed.nodes.map((node: any) => node.data.title).sort();
-  expect(titles).toEqual(["End", "Start"].sort());
+  expect(titles).toEqual(["Fin", "Inicio"].sort());
 });

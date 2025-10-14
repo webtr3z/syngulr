@@ -21,7 +21,7 @@ export async function loadDiagram(): Promise<FlowDocument | null> {
 
     return documentSchema.parse(stored);
   } catch (error) {
-    console.error("Failed to load diagram", error);
+    console.error("No se pudo cargar el diagrama", error);
     return null;
   }
 }
@@ -34,7 +34,7 @@ export async function saveDiagram(document: FlowDocument): Promise<void> {
   try {
     await set(STORAGE_KEY, document);
   } catch (error) {
-    console.error("Failed to save diagram", error);
+    console.error("No se pudo guardar el diagrama", error);
   }
 }
 
@@ -46,6 +46,6 @@ export async function resetDiagram(): Promise<void> {
   try {
     await del(STORAGE_KEY);
   } catch (error) {
-    console.error("Failed to reset diagram", error);
+    console.error("No se pudo reiniciar el diagrama", error);
   }
 }

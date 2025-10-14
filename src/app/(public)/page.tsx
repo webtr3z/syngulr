@@ -28,9 +28,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const metadata: Metadata = {
-  title: "Syngulr | One Mind. Infinite Tools.",
+  title: "Syngulr | Una mente. Herramientas infinitas.",
   description:
-    "Unlock the power of AI agents to build your entire startup solo. Design, develop, automate, and launch with Syngulr.",
+    "Desbloquea el poder de los agentes de IA para construir tu startup en solitario. Diseña, desarrolla, automatiza y lanza con Syngulr.",
 };
 
 const whyItems: Array<{
@@ -39,65 +39,65 @@ const whyItems: Array<{
   icon: LucideIcon;
 }> = [
   {
-    title: "Agent-Powered Intelligence",
+    title: "Inteligencia impulsada por agentes",
     description:
-      "Tap into autonomous AI flows that think, plan, and act like a full-stack team.",
+      "Aprovecha flujos autónomos de IA que piensan, planifican y actúan como un equipo full-stack.",
     icon: Brain,
   },
   {
-    title: "Start to Launch in One Stack",
+    title: "De la idea al lanzamiento en un mismo stack",
     description:
-      "Go from raw concept to deployed product, website, marketing, and growth automation — all solo.",
+      "Pasa de un concepto en bruto a un producto lanzado, con sitio web, marketing y automatizaciones de crecimiento — todo en solitario.",
     icon: Rocket,
   },
   {
-    title: "No-Code, Low-Code & Full Control",
+    title: "Sin código, low-code y con control total",
     description:
-      "Whether you're a thinker, tinkerer, or coder, Syngulr adapts to your workflow.",
+      "Ya seas estratega, creador o desarrollador, Syngulr se adapta a tu forma de trabajar.",
     icon: SlidersHorizontal,
   },
   {
-    title: "Scalable & Modular",
+    title: "Escalable y modular",
     description:
-      "Plug in or unplug features like APIs, branding kits, LLM orchestration, analytics, CRM, and more.",
+      "Activa o desactiva funciones como APIs, branding, orquestación de LLM, analítica, CRM y más.",
     icon: Layers,
   },
 ];
 
 const buildItems = [
-  "AI-first Startups",
-  "MVPs and Product Demos",
-  "Solo Agencies and Freelance Systems",
-  "Marketing Engines and Funnels",
-  "Entire SaaS products",
-  "Personal Brands with AI backends",
+  "Startups diseñadas con IA",
+  "MVPs y demos de producto",
+  "Agencias en solitario y sistemas freelance",
+  "Motores y embudos de marketing",
+  "Productos SaaS completos",
+  "Marcas personales con backends de IA",
 ];
 
 const personaItems = [
   {
-    title: "Solo Founders",
+    title: "Fundadores en solitario",
     description:
-      "Launch faster without waiting on a team — your AI collaborators handle the heavy lifting.",
+      "Lanza más rápido sin esperar a un equipo: tus colaboradores de IA hacen el trabajo pesado.",
   },
   {
-    title: "Developers & Indie Hackers",
+    title: "Desarrolladores e indie hackers",
     description:
-      "Prototype, iterate, and deploy ideas with an AI stack that keeps pace with your inspiration.",
+      "Prototipa, itera y lanza ideas con un stack de IA que sigue tu ritmo creativo.",
   },
   {
-    title: "Creators & Makers",
+    title: "Creadores y makers",
     description:
-      "Spin up branded experiences, content engines, and digital products that feel bespoke.",
+      "Activa experiencias, motores de contenido y productos digitales con identidad propia.",
   },
   {
-    title: "Tech-savvy Hustlers",
+    title: "Constructores orientados a resultados",
     description:
-      "Automate growth, ship experiments, and stay on top of every workflow with modular agents.",
+      "Automatiza el crecimiento, lanza experimentos y controla cada flujo con agentes modulares.",
   },
   {
-    title: "AI Explorers & Prompt Engineers",
+    title: "Exploradores de IA e ingenieros de prompts",
     description:
-      "Design, orchestrate, and test autonomous flows that go far beyond chat prompts.",
+      "Diseña, orquesta y prueba flujos autónomos que van mucho más allá de un simple prompt.",
   },
 ];
 
@@ -107,39 +107,39 @@ const featureItems: Array<{
   icon: LucideIcon;
 }> = [
   {
-    title: "Autonomous AI Agent Workflows",
+    title: "Flujos autónomos de agentes IA",
     description:
-      "Coordinate specialized agents that strategize, build, and deliver outcomes around the clock.",
+      "Coordina agentes especializados que planifican, construyen y entregan resultados sin parar.",
     icon: Workflow,
   },
   {
-    title: "Modular Tool Builder",
+    title: "Constructor modular de herramientas",
     description:
-      "Compose AI tools, APIs, and automations into a single command center tailored to your venture.",
+      "Combina herramientas de IA, APIs y automatizaciones en un único centro de control adaptado a tu proyecto.",
     icon: Wrench,
   },
   {
-    title: "Plug-and-Play Templates",
+    title: "Plantillas plug-and-play",
     description:
-      "Choose from launch-ready blueprints that cover landing pages, apps, funnels, and more.",
+      "Elige planos listos para lanzar que cubren landing pages, apps, funnels y más.",
     icon: Puzzle,
   },
   {
-    title: "Dashboard for Managing Agents & Output",
+    title: "Panel para gestionar agentes y entregables",
     description:
-      "Monitor every workflow, approve deliverables, and keep your AI workforce aligned.",
+      "Supervisa cada flujo, aprueba entregables y mantén alineado a tu equipo de IA.",
     icon: LayoutDashboard,
   },
   {
-    title: "Productization Pipelines",
+    title: "Pipelines de productización",
     description:
-      "Move from idea to website to launch with built-in operations for shipping your product.",
+      "Avanza de la idea al sitio web y al lanzamiento con operaciones integradas para entregar tu producto.",
     icon: Package,
   },
   {
-    title: "Auto-branding, Copy & Growth Tools",
+    title: "Branding automático, copy y herramientas de crecimiento",
     description:
-      "Generate cohesive visuals, messaging, and campaigns that resonate with your audience.",
+      "Genera visuales, mensajes y campañas coherentes que conectan con tu audiencia.",
     icon: Globe,
   },
 ];
@@ -147,14 +147,14 @@ const featureItems: Array<{
 const testimonials = [
   {
     quote:
-      "With Syngulr, I prototyped, branded, and launched my product in 3 days. Solo.",
+      "Con Syngulr prototipé, construí la marca y lancé mi producto en 3 días. Yo sola.",
     name: "Aria R.",
-    role: "Creator & Tech Founder",
+    role: "Creadora y fundadora tech",
   },
   {
-    quote: "It’s like having a full remote team of AI agents that never sleep.",
+    quote: "Es como tener un equipo remoto de agentes de IA que nunca duerme.",
     name: "Niko G.",
-    role: "Indie Hacker",
+    role: "Indie hacker",
   },
 ];
 
@@ -172,8 +172,7 @@ export default function HomePage() {
           </span> */}
           <div className="space-y-6">
             <h1 className="text-4xl font-normal tracking-tight sm:text-5xl lg:text-9xl">
-              Be the founder, the team, and the launch — Syngulr makes one mind
-              infinite.
+              Sé la persona fundadora, el equipo y el lanzamiento — Syngulr vuelve infinita una sola mente.
             </h1>
             {/* <p className="mx-auto max-w-3xl text-base text-muted-foreground sm:text-lg">
               Syngulr equips solo builders, creators, and innovators with an
@@ -184,8 +183,8 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col items-center justify-start gap-3 sm:flex-row">
             <Button size="lg" asChild className="h-[56px]">
-              <Link href="/flow" aria-label="Start your journey with Syngulr">
-                Start Your Journey
+              <Link href="/flow" aria-label="Comienza tu viaje con Syngulr">
+                Comienza tu viaje
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
@@ -195,25 +194,25 @@ export default function HomePage() {
 
       <footer className="border-t border-borde px-6 py-8 text-sm text-muted-foreground sm:px-8">
         <div className="flex w-full flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
-          <p>© 2025 Syngulr Technologies. Built for the Singular You.</p>
+          <p>© 2025 Syngulr Technologies. Diseñado para tu singularidad.</p>
           {/* <div className="flex gap-6">
             <Link
               href="#what-is-syngulr"
               className="transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              About
+              Sobre Syngulr
             </Link>
             <Link
               href="#core-features"
               className="transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Features
+              Funciones
             </Link>
             <Link
               href="#join"
               className="transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Updates
+              Actualizaciones
             </Link>
           </div> */}
         </div>

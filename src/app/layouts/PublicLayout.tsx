@@ -25,15 +25,15 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               className="flex items-center gap-3 text-sm font-semibold tracking-tight transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-foreground">
-                {/* <Workflow className="h-5 w-5" aria-hidden="true" /> */}
+                sy
               </span>
               <span className="text-2xl font-medium">syngulr</span>
             </Link>
             <div className="flex items-center gap-3">
               <ThemeToggle />
               <Button asChild size="sm" className="h-9 px-4">
-                <Link href="/flow" aria-label="Get started with Syngulr">
-                  Get Started
+                <Link href="/flow" aria-label="Comenzar con Syngulr">
+                  Empezar
                 </Link>
               </Button>
             </div>
