@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ChatPanel } from "@/components/panels/ChatPanel";
 import { toMermaid } from "@/lib/mermaid";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { FlowDocument, FlowNode } from "@/lib/schema";
 import { useFlowStore } from "@/lib/store";
 
@@ -26,13 +28,15 @@ export function Inspector({ node }: InspectorProps) {
     useShallow((state) => ({
       nodes: state.nodes,
       edges: state.edges,
-    })),
+    }))
   );
 
   const [title, setTitle] = useState(node?.data.title ?? "");
   const [description, setDescription] = useState(node?.data.description ?? "");
   const [previewTab, setPreviewTab] = useState<"json" | "mermaid">("json");
-  const [inspectorTab, setInspectorTab] = useState<"details" | "chat">("details");
+  const [inspectorTab, setInspectorTab] = useState<"details" | "chat">(
+    "details"
+  );
 
   useEffect(() => {
     setTitle(node?.data.title ?? "");
@@ -57,16 +61,16 @@ export function Inspector({ node }: InspectorProps) {
         type: edge.type,
       })),
     }),
-    [nodes, edges],
+    [nodes, edges]
   );
 
   const jsonPreview = useMemo(
     () => JSON.stringify(snapshot, null, 2),
-    [snapshot],
+    [snapshot]
   );
   const mermaidPreview = useMemo(
     () => toMermaid(snapshot, layoutDirection),
-    [snapshot, layoutDirection],
+    [snapshot, layoutDirection]
   );
 
   const handleCopy = async (value: string) => {
@@ -161,12 +165,14 @@ export function Inspector({ node }: InspectorProps) {
       </TabsList>
       <TabsContent value="details" className="mt-4">
         <Card className="w-full">
-          <CardContent className="space-y-4 pt-6">{inspectorContent}</CardContent>
+          <CardContent className="space-y-4 pt-6">
+            {inspectorContent}
+          </CardContent>
         </Card>
       </TabsContent>
       <TabsContent value="chat" className="mt-4">
-        <Card className="flex h-[calc(100vh-240px)] w-full flex-col">
-          <CardContent className="flex h-full flex-col gap-4 pt-6">
+        <Card className="flex h-[calc(100vh-88px)] w-full flex-col p-[0px]!">
+          <CardContent className="flex h-full flex-col gap-4 p-0!">
             <ChatPanel />
           </CardContent>
         </Card>
@@ -194,29 +200,64 @@ function PreviewPanel({
     <Card className="w-full border bg-muted/30">
       <CardContent className="space-y-4 pt-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-medium text-muted-foreground">Vista previa del código</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Vista previa del código
+          </p>
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onCopy(previewTab === "json" ? jsonPreview : mermaidPreview)}
+            onClick={() =>
+              onCopy(previewTab === "json" ? jsonPreview : mermaidPreview)
+            }
           >
             Copiar
           </Button>
         </div>
-        <Tabs value={previewTab} onValueChange={(value) => onPreviewTabChange(value as "json" | "mermaid")}>
+        <Tabs
+          value={previewTab}
+          onValueChange={(value) =>
+            onPreviewTabChange(value as "json" | "mermaid")
+          }
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="json">JSON</TabsTrigger>
             <TabsTrigger value="mermaid">Mermaid</TabsTrigger>
           </TabsList>
           <TabsContent value="json">
-            <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-background/80 p-3 text-left text-xs leading-relaxed text-foreground">
-              {jsonPreview}
-            </pre>
+            <div className="mt-3 max-h-64 overflow-auto rounded-md bg-background/80">
+              <SyntaxHighlighter
+                language="json"
+                style={oneDark}
+                customStyle={{
+                  margin: 0,
+                  background: "transparent",
+                  fontSize: "0.75rem",
+                  lineHeight: "1.4",
+                  padding: "0.75rem",
+                }}
+                wrapLongLines
+              >
+                {jsonPreview}
+              </SyntaxHighlighter>
+            </div>
           </TabsContent>
           <TabsContent value="mermaid">
-            <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-background/80 p-3 text-left text-xs leading-relaxed text-foreground">
-              {mermaidPreview}
-            </pre>
+            <div className="mt-3 max-h-64 overflow-auto rounded-md bg-background/80">
+              <SyntaxHighlighter
+                language="markdown"
+                style={oneDark}
+                customStyle={{
+                  margin: 0,
+                  background: "transparent",
+                  fontSize: "0.75rem",
+                  lineHeight: "1.4",
+                  padding: "0.75rem",
+                }}
+                wrapLongLines
+              >
+                {mermaidPreview}
+              </SyntaxHighlighter>
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>

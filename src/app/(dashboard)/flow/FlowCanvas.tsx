@@ -161,7 +161,7 @@ function FlowCanvasInner() {
       };
       addNode(adjustedPosition, { variant });
     },
-    [addNode, nodes.length, rf],
+    [addNode, nodes.length, rf]
   );
 
   const handleConnect = useCallback(
@@ -316,114 +316,120 @@ function FlowCanvasInner() {
         direction="horizontal"
         className="flex h-full w-full"
       >
-      <Panel defaultSize={72} minSize={40} className="relative">
-        <div className="relative h-full" ref={wrapperRef}>
-          <div className="pointer-events-none absolute left-4 top-4 z-20 flex flex-wrap gap-2">
-            <div className="pointer-events-auto">
-              <Toolbar
-                onAddNode={handleAddNode}
-                onAutoLayout={handleAutoLayout}
-                onFitView={() => rf.fitView({ duration: 300, padding: 0.2 })}
-                onUndo={undo}
-                onRedo={redo}
-                onExport={handleExport}
-                onExportMermaid={handleExportMermaid}
-                onImport={handleImport}
-                onReset={handleReset}
-                onToggleDirection={() =>
-                  setLayoutDirection(layoutDirection === "LR" ? "TB" : "LR")
-                }
-                layoutDirection={layoutDirection}
-              />
-            </div>
-          </div>
-
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={handleConnect}
-            fitView
-            fitViewOptions={{ duration: 300 }}
-            nodeTypes={nodeTypes}
-            onSelectionChange={handleSelectionChange}
-            selectionOnDrag
-            multiSelectionKeyCode="Shift"
-            panOnDrag
-            zoomOnDoubleClick={false}
-            proOptions={{ hideAttribution: true }}
-          >
-            <MiniMap
-              pannable
-              zoomable
-              className="!rounded-lg !border !border-border !bg-background/90 !text-foreground !shadow-md"
-              maskColor="rgba(10, 10, 10, 0.45)"
-            />
-            <Controls
-              showInteractive={false}
-              className="!rounded-lg !border !border-border !bg-background/90 !text-foreground !shadow-md [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-md [&>button]:border [&>button]:border-border [&>button]:bg-transparent [&>button]:text-foreground hover:[&>button]:bg-muted/70 focus-visible:[&>button]:ring-2 focus-visible:[&>button]:ring-ring focus-visible:[&>button]:ring-offset-2 focus-visible:[&>button]:ring-offset-background"
-            />
-            <Background
-              color="var(--border)"
-              gap={16}
-              variant={BackgroundVariant.Dots}
-            />
-          </ReactFlow>
-
-          {nodes.length === 0 ? (
-            <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
-              <div className="pointer-events-auto rounded-lg border bg-background/80 px-6 py-4 text-center shadow-lg">
-                <h2 className="text-lg font-semibold">Comienza tu flujo</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Haz clic en &ldquo;Agregar bloque&rdquo; o presiona N para crear la primera caja.
-                </p>
+        <Panel defaultSize={72} minSize={40} className="relative">
+          <div className="relative h-full" ref={wrapperRef}>
+            <div className="pointer-events-none absolute left-4 top-4 z-20 flex flex-wrap gap-2">
+              <div className="pointer-events-auto">
+                <Toolbar
+                  onAddNode={handleAddNode}
+                  onAutoLayout={handleAutoLayout}
+                  onFitView={() => rf.fitView({ duration: 300, padding: 0.2 })}
+                  onUndo={undo}
+                  onRedo={redo}
+                  onExport={handleExport}
+                  onExportMermaid={handleExportMermaid}
+                  onImport={handleImport}
+                  onReset={handleReset}
+                  onToggleDirection={() =>
+                    setLayoutDirection(layoutDirection === "LR" ? "TB" : "LR")
+                  }
+                  layoutDirection={layoutDirection}
+                />
               </div>
             </div>
-          ) : null}
-        </div>
-      </Panel>
-      <PanelResizeHandle
-        className={cn(
-          "relative flex w-2 items-center justify-center bg-border hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          inspectorCollapsed && "bg-transparent hover:bg-transparent",
-        )}
-      >
-        <button
-          type="button"
-          onClick={handleToggleInspector}
-          ref={toggleButtonRef}
-          className="pointer-events-auto absolute -left-14 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/90 text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={inspectorCollapsed ? "Expandir panel lateral" : "Contraer panel lateral"}
-        >
-          {inspectorCollapsed ? (
-            <PanelRightOpen className="h-4 w-4" />
-          ) : (
-            <PanelRightClose className="h-4 w-4" />
-          )}
-        </button>
-        <div
+
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={handleConnect}
+              fitView
+              fitViewOptions={{ duration: 300 }}
+              nodeTypes={nodeTypes}
+              onSelectionChange={handleSelectionChange}
+              selectionOnDrag
+              multiSelectionKeyCode="Shift"
+              panOnDrag
+              zoomOnDoubleClick={false}
+              proOptions={{ hideAttribution: true }}
+            >
+              <MiniMap
+                pannable
+                zoomable
+                className="!rounded-lg !border !border-border !bg-background/90 !text-foreground !shadow-md"
+                maskColor="rgba(10, 10, 10, 0.45)"
+              />
+              <Controls
+                showInteractive={false}
+                className="!rounded-lg !border !border-border !bg-background/90 !text-foreground !shadow-md [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-md [&>button]:border [&>button]:border-border [&>button]:bg-transparent [&>button]:text-foreground hover:[&>button]:bg-muted/70 focus-visible:[&>button]:ring-2 focus-visible:[&>button]:ring-ring focus-visible:[&>button]:ring-offset-2 focus-visible:[&>button]:ring-offset-background"
+              />
+              <Background
+                color="var(--border)"
+                gap={16}
+                variant={BackgroundVariant.Dots}
+              />
+            </ReactFlow>
+
+            {nodes.length === 0 ? (
+              <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+                <div className="pointer-events-auto rounded-lg border bg-background/80 px-6 py-4 text-center shadow-lg">
+                  <h2 className="text-lg font-semibold">Comienza tu flujo</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Haz clic en &ldquo;Agregar bloque&rdquo; o presiona N para
+                    crear la primera caja.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </Panel>
+        <PanelResizeHandle
           className={cn(
-            "h-10 w-0.5 rounded-full bg-border transition-opacity",
-            inspectorCollapsed && "opacity-0",
+            "relative flex w-2 items-center justify-center bg-border hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            inspectorCollapsed && "bg-transparent hover:bg-transparent"
           )}
-        />
-      </PanelResizeHandle>
-      <Panel
-        ref={inspectorPanelRef}
-        defaultSize={28}
-        minSize={inspectorCollapsed ? 0 : 20}
-        collapsedSize={0}
-        collapsible
-        onCollapse={() => setInspectorCollapsed(true)}
-        onExpand={() => setInspectorCollapsed(false)}
-        className={cn(
-          "border-l border-border bg-background/90 p-4 transition-all duration-200",
-          inspectorCollapsed && "!pointer-events-none !border-transparent !bg-transparent !p-0 opacity-0",
-        )}
-      >
-        <Inspector node={selectedNode} />
-      </Panel>
+        >
+          <button
+            type="button"
+            onClick={handleToggleInspector}
+            ref={toggleButtonRef}
+            className="pointer-events-auto absolute -left-14 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/90 text-foreground shadow-sm transition hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={
+              inspectorCollapsed
+                ? "Expandir panel lateral"
+                : "Contraer panel lateral"
+            }
+          >
+            {inspectorCollapsed ? (
+              <PanelRightOpen className="h-4 w-4" />
+            ) : (
+              <PanelRightClose className="h-4 w-4" />
+            )}
+          </button>
+          <div
+            className={cn(
+              "h-10 w-0.5 rounded-full bg-border transition-opacity",
+              inspectorCollapsed && "opacity-0"
+            )}
+          />
+        </PanelResizeHandle>
+        <Panel
+          ref={inspectorPanelRef}
+          defaultSize={28}
+          minSize={inspectorCollapsed ? 0 : 20}
+          collapsedSize={0}
+          collapsible
+          onCollapse={() => setInspectorCollapsed(true)}
+          onExpand={() => setInspectorCollapsed(false)}
+          className={cn(
+            "border-l border-border bg-background/90 p-4 transition-all duration-200",
+            inspectorCollapsed &&
+              "!pointer-events-none !border-transparent !bg-transparent !p-0 opacity-0"
+          )}
+        >
+          <Inspector node={selectedNode} />
+        </Panel>
       </PanelGroup>
     </div>
   );

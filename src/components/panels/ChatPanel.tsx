@@ -13,7 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { mermaidToDocument } from "@/lib/mermaid";
+import { useFlowStore } from "@/lib/store";
 import { Loader2, SendHorizonal, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ChatMessage {
   id: string;
@@ -48,6 +51,10 @@ export function ChatPanel() {
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const importDocument = useFlowStore((state) => state.importDocument);
+  const resetFlow = useFlowStore((state) => state.reset);
+  const runLayout = useFlowStore((state) => state.runLayout);
+
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
       listRef.current?.scrollTo({
@@ -77,8 +84,12 @@ export function ChatPanel() {
   }, [inputValue, autoResize]);
 
   useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    const handler = (event: Event) => {
+      if (
+        event instanceof KeyboardEvent &&
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k"
+      ) {
         event.preventDefault();
         textareaRef.current?.focus();
       }
@@ -91,23 +102,29 @@ export function ChatPanel() {
     setInputValue(event.target.value);
   };
 
-  const appendMessage = useCallback((message: Omit<ChatMessage, "id" | "createdAt">) => {
-    const now = Date.now();
-    const newMessage: ChatMessage = {
-      id: `${message.role}-${now}-${Math.random().toString(36).slice(2)}`,
-      createdAt: now,
-      role: message.role,
-      content: message.content,
-    };
-    setMessages((prev) => [...prev, newMessage]);
-    return newMessage.id;
-  }, []);
+  const appendMessage = useCallback(
+    (message: Omit<ChatMessage, "id" | "createdAt">) => {
+      const now = Date.now();
+      const newMessage: ChatMessage = {
+        id: `${message.role}-${now}-${Math.random().toString(36).slice(2)}`,
+        createdAt: now,
+        role: message.role,
+        content: message.content,
+      };
+      setMessages((prev) => [...prev, newMessage]);
+      return newMessage.id;
+    },
+    []
+  );
 
-  const updateMessage = useCallback((id: string, updater: (prev: ChatMessage) => ChatMessage) => {
-    setMessages((prev) =>
-      prev.map((message) => (message.id === id ? updater(message) : message)),
-    );
-  }, []);
+  const updateMessage = useCallback(
+    (id: string, updater: (prev: ChatMessage) => ChatMessage) => {
+      setMessages((prev) =>
+        prev.map((message) => (message.id === id ? updater(message) : message))
+      );
+    },
+    []
+  );
 
   const handleSubmit = useCallback(
     async (event?: FormEvent) => {
@@ -188,19 +205,84 @@ export function ChatPanel() {
           }));
           scrollToBottom();
         }
+
+        const finalContent = assistantContent.trim();
+        let parsed = false;
+        try {
+          const parsedJson = JSON.parse(finalContent);
+          if (parsedJson && typeof parsedJson === "object") {
+            parsed = true;
+            const reportMessage =
+              typeof (parsedJson as { reportMessage?: unknown })
+                .reportMessage === "string"
+                ? (parsedJson as { reportMessage: string }).reportMessage
+                : finalContent;
+            const mermaidSource =
+              typeof (parsedJson as { mmd?: unknown }).mmd === "string"
+                ? (parsedJson as { mmd: string }).mmd
+                : undefined;
+
+            updateMessage(assistantId, (prev) => ({
+              ...prev,
+              content: reportMessage,
+            }));
+
+            if (mermaidSource) {
+              try {
+                const normalized = mermaidSource.replace(/\\n/g, "\n").trim();
+                const document = mermaidToDocument(normalized);
+                resetFlow();
+                importDocument(document);
+                await runLayout().catch((error) => {
+                  console.error("No se pudo aplicar el layout:", error);
+                });
+                toast.success(
+                  "Diagrama actualizado desde la respuesta del asistente."
+                );
+              } catch (mermaidError) {
+                console.error(
+                  "No se pudo interpretar el diagrama Mermaid:",
+                  mermaidError
+                );
+                toast.error(
+                  "No se pudo convertir el diagrama Mermaid proporcionado."
+                );
+              }
+            }
+          }
+        } catch {
+          // not valid JSON; fall back to plain content
+        }
+
+        if (!parsed) {
+          updateMessage(assistantId, (prev) => ({
+            ...prev,
+            content: finalContent,
+          }));
+        }
       } catch (error) {
         console.error("Error al enviar el mensaje:", error);
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : "Hubo un problema al procesar tu mensaje. Intenta nuevamente.",
+            : "Hubo un problema al procesar tu mensaje. Intenta nuevamente."
         );
       } finally {
         setIsSending(false);
         scrollToBottom();
       }
     },
-    [appendMessage, inputValue, isSending, messages, scrollToBottom, updateMessage],
+    [
+      appendMessage,
+      importDocument,
+      inputValue,
+      isSending,
+      messages,
+      resetFlow,
+      runLayout,
+      scrollToBottom,
+      updateMessage,
+    ]
   );
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -219,17 +301,17 @@ export function ChatPanel() {
           minute: "2-digit",
         }),
       })),
-    [messages],
+    [messages]
   );
 
   return (
     <div className="flex h-full flex-col gap-3">
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto rounded-lg border border-border bg-background/70 p-4"
+        className="overflow-y-auto h-full rounded-lg bg-background/70 p-4"
       >
         {formattedMessages.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-full items-center text-center justify-center text-sm text-muted-foreground/50">
             Inicia una conversación para recibir ayuda contextual.
           </div>
         ) : (
@@ -239,7 +321,7 @@ export function ChatPanel() {
                 key={message.id}
                 className={cn(
                   "flex flex-col gap-1",
-                  message.role === "user" ? "items-end" : "items-start",
+                  message.role === "user" ? "items-end" : "items-start"
                 )}
               >
                 <div
@@ -247,7 +329,7 @@ export function ChatPanel() {
                     "max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm transition",
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground",
+                      : "bg-muted text-foreground"
                   )}
                 >
                   <p className="whitespace-pre-wrap leading-relaxed">
@@ -255,7 +337,8 @@ export function ChatPanel() {
                   </p>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {message.role === "user" ? "Tú" : "Syngulr AI"} · {message.timestamp}
+                  {message.role === "user" ? "Tú" : "Syngulr AI"} ·{" "}
+                  {message.timestamp}
                 </span>
               </div>
             ))}
@@ -270,17 +353,33 @@ export function ChatPanel() {
       ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="flex items-end gap-2 rounded-lg border border-border bg-background/80 p-2">
+        <div className="flex flex-col items-end gap-2 rounded-lg border border-border bg-background/80 p-2">
           <Textarea
             ref={textareaRef}
             value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            className="max-h-48 min-h-[56px] flex-1 resize-none border-0 bg-transparent px-3 py-3 text-sm focus-visible:ring-0"
-            placeholder="Haz una pregunta o describe lo que necesitas…"
+            className="max-h-56 min-h-[56px] flex-1 resize-none border-0 bg-transparent px-3 py-3 text-sm focus-visible:ring-0"
+            placeholder="Crea un diagrama de flujo el cual..."
             disabled={isSending}
           />
-          <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-10 w-10 border-[0px]! hover:text-destructive"
+              onClick={() => {
+                setMessages([]);
+                if (typeof window !== "undefined") {
+                  window.localStorage.removeItem(STORAGE_KEY);
+                }
+              }}
+              disabled={isSending || messages.length === 0}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Limpiar conversación</span>
+            </Button>
             <Button
               type="submit"
               size="icon"
@@ -294,27 +393,14 @@ export function ChatPanel() {
               )}
               <span className="sr-only">Enviar mensaje</span>
             </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-10 w-10"
-              onClick={() => {
-                setMessages([]);
-                if (typeof window !== "undefined") {
-                  window.localStorage.removeItem(STORAGE_KEY);
-                }
-              }}
-              disabled={isSending || messages.length === 0}
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="sr-only">Limpiar conversación</span>
-            </Button>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Enter para enviar · Shift + Enter para salto de línea · Cmd/Ctrl + K para enfocar
-        </p>
+        <div className="flex px-4 py-2">
+          <p className="text-xs text-muted-foreground">
+            Enter para enviar · Shift + Enter para salto de línea · Cmd/Ctrl + K
+            para enfocar
+          </p>
+        </div>
       </form>
     </div>
   );
