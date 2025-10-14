@@ -81,7 +81,7 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.195 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -120,5 +120,132 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .animated-cursor {
+    opacity: 0;
+    transition: opacity 200ms ease-out;
+    will-change: transform, opacity;
+    mix-blend-mode: screen;
+  }
+
+  .animated-cursor.cursor-visible {
+    opacity: 1;
+  }
+
+  .cursor-core {
+    position: relative;
+    display: flex;
+    height: 3.75rem;
+    width: 3.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--foreground) 15%, transparent) 0%,
+      color-mix(in oklab, var(--foreground) 5%, transparent) 8%,
+      transparent 25%
+    );
+    box-shadow: 0 0 22px color-mix(in oklab, var(--primary) 12%, transparent),
+      inset 0 0 16px color-mix(in oklab, var(--foreground) 32%, transparent);
+    overflow: visible;
+  }
+
+  .cursor-core::after {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--background) 5%, transparent) 0%,
+      transparent 5%
+    );
+    filter: blur(8px);
+    opacity: 0.25;
+    animation: cursor-pulse 2.8s ease-in-out infinite;
+  }
+
+  .cursor-halo {
+    position: absolute;
+    inset: -22%;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in oklab, var(--primary) 5%, transparent);
+    opacity: 0.05;
+    filter: blur(1.5px);
+    animation: cursor-swirl 5s linear infinite;
+  }
+
+  .cursor-particle {
+    position: absolute;
+    height: 1px;
+    width: 1px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--primary) 68%, transparent);
+    filter: blur(0.6px);
+    animation: cursor-particle var(--duration, 2s) var(--delay) infinite
+      cubic-bezier(0.45, 0, 0.35, 1);
+    will-change: transform, opacity;
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  @keyframes cursor-pulse {
+    0%,
+    100% {
+      transform: scale(0.9);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 1;
+    }
+  }
+
+  @keyframes cursor-swirl {
+    0% {
+      transform: rotate(0deg) scale(1);
+      opacity: 0.65;
+    }
+    40% {
+      opacity: 0.4;
+    }
+    100% {
+      transform: rotate(360deg) scale(1.05);
+      opacity: 0.65;
+    }
+  }
+
+  @keyframes cursor-particle {
+    0% {
+      transform: translate3d(var(--offset-x), var(--offset-y), 0) scale(1);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: translate3d(0, 0, 0) scale(0.25);
+      opacity: 0;
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .animated-cursor {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-core::after,
+  .cursor-halo,
+  .cursor-particle {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

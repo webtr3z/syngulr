@@ -47,7 +47,12 @@ pnpm test:e2e     # Playwright e2e flow (see note below)
 
 ## Routes
 
-- `/flow` – interactive flow editor (client component). The root page (`/`) keeps a simple Tailwind + shadcn demo.
+- `/` – marketing landing experience with public layout chrome
+- `/flow` – interactive flow editor (client component)
+
+## Environment Variables
+
+`NEXT_PUBLIC_OPENAI_API_KEY` is optional and only required if you want to enable the flow editor assistant chat experience.
 
 ## SSR Considerations
 

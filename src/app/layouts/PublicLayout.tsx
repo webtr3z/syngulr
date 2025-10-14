@@ -2,11 +2,12 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Workflow } from "lucide-react";
 import { Toaster } from "sonner";
 
+import { AnimatedCursor } from "@/components/AnimatedCursor";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -15,19 +16,27 @@ interface PublicLayoutProps {
 export function PublicLayout({ children }: PublicLayoutProps) {
   return (
     <ThemeProvider enableSystem disableTransitionOnChange>
-      <div className="flex min-h-screen flex-col bg-transparent text-foreground">
-        <header className="border-b border-border bg-transparent">
-          <div className="mx-auto flex w-full items-center justify-between px-6 py-4 sm:px-8">
+      <div className="relative flex w-full min-h-screen flex-col bg-background text-foreground">
+        <AnimatedCursor />
+        <header className="w-full border-b border-border">
+          <div className="flex w-full items-center justify-between px-6 py-4 sm:px-8">
             <Link
               href="/"
               className="flex items-center gap-3 text-sm font-semibold tracking-tight transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Workflow className="h-5 w-5" aria-hidden="true" />
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-foreground">
+                {/* <Workflow className="h-5 w-5" aria-hidden="true" /> */}
               </span>
-              <span className="text-lg">Syngulr</span>
+              <span className="text-2xl font-medium">syngulr</span>
             </Link>
-            <ThemeToggle />
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Button asChild size="sm" className="h-9 px-4">
+                <Link href="/flow" aria-label="Get started with Syngulr">
+                  Get Started
+                </Link>
+              </Button>
+            </div>
           </div>
         </header>
         <main className="flex-1">{children}</main>
