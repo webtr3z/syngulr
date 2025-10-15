@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
 import { MainNav } from "@/components/sidebar/MainNav";
-import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { PanelLeftClose, PanelRightClose } from "lucide-react";
-import Link from "next/link";
+import Image from "next/image";
+import { useState, type ReactNode } from "react";
+import { Toaster } from "sonner";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -29,7 +29,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               collapsed && "flex-col gap-3 px-2"
             )}
           >
-            <Link
+            {/* <Link
               href="/"
               className={cn(
                 "flex items-center gap-3 text-sm font-semibold tracking-tight transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -42,7 +42,31 @@ export function MainLayout({ children }: MainLayoutProps) {
               {!collapsed && (
                 <span className="text-2xl font-medium">syngulr</span>
               )}
-            </Link>
+            </Link> */}
+            <div className={cn("relative h-8 w-[151px]", collapsed && "w-8")}>
+              <Image
+                src="/images/logo.svg"
+                alt="Syngulr"
+                fill
+                className={cn(
+                  "hidden object-contain dark:block",
+                  collapsed && "p-0"
+                )}
+                sizes="151px"
+                priority
+              />
+              <Image
+                src="/images/logo-black.svg"
+                alt="Syngulr"
+                fill
+                className={cn(
+                  "block object-contain dark:hidden",
+                  collapsed && "p-0"
+                )}
+                sizes="151px"
+                priority
+              />
+            </div>
             <button
               type="button"
               aria-label={

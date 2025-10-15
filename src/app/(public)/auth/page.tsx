@@ -15,17 +15,13 @@ export default function AuthPage() {
   const router = useRouter();
   const isAccountConnected = Boolean(account?.address);
 
-  const { data: balance, isLoading } = useReadContract(
-    balanceOf,
-    {
-      contract: nftContract,
-      owner:
-        account?.address ?? "0x0000000000000000000000000000000000000000",
-      queryOptions: {
-        enabled: isAccountConnected,
-      },
-    }
-  );
+  const { data: balance, isLoading } = useReadContract(balanceOf, {
+    contract: nftContract,
+    owner: account?.address ?? "0x0000000000000000000000000000000000000000",
+    queryOptions: {
+      enabled: isAccountConnected,
+    },
+  });
 
   const hasNFT = isAccountConnected && Boolean(balance && balance > 0n);
 
@@ -58,7 +54,7 @@ export default function AuthPage() {
           </div>
         ) : isLoading ? (
           <div className="space-y-5 rounded-xl border border-border bg-card/60 p-8 text-center shadow-sm">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div aria-hidden="true" className="mx-auto loader-circle" />
             <p className="text-sm leading-relaxed text-muted-foreground">
               Verificando tu token de acceso...
             </p>

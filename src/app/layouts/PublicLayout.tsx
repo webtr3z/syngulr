@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { AnimatedCursor } from "@/components/AnimatedCursor";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -19,7 +20,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
         <AnimatedCursor />
         <header className="w-full border-b border-border">
           <div className="flex w-full items-center justify-between px-6 py-4 sm:px-8">
-            <Link
+            {/* <Link
               href="/"
               className="flex items-center gap-3 text-sm font-semibold tracking-tight transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
@@ -27,7 +28,25 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 sy
               </span>
               <span className="text-2xl font-medium">syngulr</span>
-            </Link>
+            </Link> */}
+            <div className="relative h-8 w-[151px]">
+              <Image
+                src="/images/logo.svg"
+                alt="Syngulr"
+                fill
+                className="hidden object-contain dark:block"
+                sizes="151px"
+                priority
+              />
+              <Image
+                src="/images/logo-black.svg"
+                alt="Syngulr"
+                fill
+                className="block object-contain dark:hidden"
+                sizes="151px"
+                priority
+              />
+            </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
               <Button asChild size="sm" className="h-9 px-4">

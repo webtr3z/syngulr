@@ -51,7 +51,7 @@ export function TokenGate({ children, redirectTo = "/auth" }: TokenGateProps) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center justify-center gap-4 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div aria-hidden="true" className="loader-circle" />
           <p className="text-sm text-muted-foreground">Verificando acceso...</p>
         </div>
       </div>
