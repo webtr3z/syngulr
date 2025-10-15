@@ -36,7 +36,7 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col items-center justify-start gap-3 sm:flex-row">
             <Button size="lg" asChild className="h-[56px]">
-              <Link href="/flow" aria-label="Comienza tu viaje con Syngulr">
+              <Link href="/auth" aria-label="Comienza tu viaje con Syngulr">
                 Comienza tu viaje
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>

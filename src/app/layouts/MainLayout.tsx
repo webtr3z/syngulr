@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ThemeProvider } from "@/components/theme-provider";
 import { MainNav } from "@/components/sidebar/MainNav";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
@@ -16,7 +15,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <ThemeProvider enableSystem disableTransitionOnChange>
+    <>
       <div className="flex min-h-screen bg-background text-foreground">
         <aside
           className={cn(
@@ -67,6 +66,6 @@ export function MainLayout({ children }: MainLayoutProps) {
         <main className="flex-1 overflow-hidden bg-background">{children}</main>
       </div>
       <Toaster richColors />
-    </ThemeProvider>
+    </>
   );
 }
