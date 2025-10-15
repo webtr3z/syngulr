@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Toaster } from "sonner";
 
 import { AnimatedCursor } from "@/components/AnimatedCursor";
-import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +14,7 @@ interface PublicLayoutProps {
 
 export function PublicLayout({ children }: PublicLayoutProps) {
   return (
-    <ThemeProvider enableSystem disableTransitionOnChange>
+    <>
       <div className="relative flex w-full min-h-screen flex-col bg-background text-foreground">
         <AnimatedCursor />
         <header className="w-full border-b border-border">
@@ -32,7 +31,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             <div className="flex items-center gap-3">
               <ThemeToggle />
               <Button asChild size="sm" className="h-9 px-4">
-                <Link href="/flow" aria-label="Comenzar con Syngulr">
+                <Link href="/auth" aria-label="Conectar tu wallet con Syngulr">
                   Empezar
                 </Link>
               </Button>
@@ -42,6 +41,6 @@ export function PublicLayout({ children }: PublicLayoutProps) {
         <main className="flex-1">{children}</main>
       </div>
       <Toaster richColors />
-    </ThemeProvider>
+    </>
   );
 }
