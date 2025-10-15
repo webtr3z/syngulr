@@ -5,7 +5,6 @@ import "@xyflow/react/dist/style.css";
 import {
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
@@ -360,10 +359,10 @@ function FlowCanvasInner() {
                 className="!rounded-lg !border !border-border !bg-background/90 !text-foreground !shadow-md"
                 maskColor="rgba(10, 10, 10, 0.45)"
               />
-              <Controls
+              {/* <Controls
                 showInteractive={false}
                 className="!rounded-lg !border !border-border !bg-background/90 !text-foreground !shadow-md [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-md [&>button]:border [&>button]:border-border [&>button]:bg-transparent [&>button]:text-foreground hover:[&>button]:bg-muted/70 focus-visible:[&>button]:ring-2 focus-visible:[&>button]:ring-ring focus-visible:[&>button]:ring-offset-2 focus-visible:[&>button]:ring-offset-background"
-              />
+              /> */}
               <Background
                 color="var(--border)"
                 gap={16}

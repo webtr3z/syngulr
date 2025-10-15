@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { ChatPanel } from "@/components/panels/ChatPanel";
+import { HelpPanel } from "@/components/panels/HelpPanel";
 import { toMermaid } from "@/lib/mermaid";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -34,7 +34,7 @@ export function Inspector({ node }: InspectorProps) {
   const [title, setTitle] = useState(node?.data.title ?? "");
   const [description, setDescription] = useState(node?.data.description ?? "");
   const [previewTab, setPreviewTab] = useState<"json" | "mermaid">("json");
-  const [inspectorTab, setInspectorTab] = useState<"details" | "chat">(
+  const [inspectorTab, setInspectorTab] = useState<"details" | "help">(
     "details"
   );
 
@@ -156,12 +156,12 @@ export function Inspector({ node }: InspectorProps) {
   return (
     <Tabs
       value={inspectorTab}
-      onValueChange={(value) => setInspectorTab(value as "details" | "chat")}
+      onValueChange={(value) => setInspectorTab(value as "details" | "help")}
       className="w-full"
     >
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="details">Inspector</TabsTrigger>
-        <TabsTrigger value="chat">Chat</TabsTrigger>
+        <TabsTrigger value="help">Ayuda</TabsTrigger>
       </TabsList>
       <TabsContent value="details" className="mt-4">
         <Card className="w-full">
@@ -170,10 +170,10 @@ export function Inspector({ node }: InspectorProps) {
           </CardContent>
         </Card>
       </TabsContent>
-      <TabsContent value="chat" className="mt-4">
+      <TabsContent value="help" className="mt-4">
         <Card className="flex h-[calc(100vh-88px)] w-full flex-col p-[0px]!">
           <CardContent className="flex h-full flex-col gap-4 p-0!">
-            <ChatPanel />
+            <HelpPanel />
           </CardContent>
         </Card>
       </TabsContent>

@@ -16,11 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { FlowNodeData } from "@/lib/schema";
 import { useFlowStore } from "@/lib/store";
-import {
-  Handle,
-  Position,
-  type NodeProps,
-} from "@xyflow/react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo, useCallback } from "react";
 import { FileText, GitBranch } from "lucide-react";
 
@@ -48,19 +44,82 @@ function FlowNodeComponent({ id, data, selected }: NodeProps) {
 
   return (
     <>
+      {/* Left side - input and output */}
       <Handle
-        id={`${id}-target`}
+        id={`${id}-target-left`}
         position={Position.Left}
         type="target"
-        className="size-3 rounded-full border border-border bg-background"
-        data-testid={`${id}-handle-target`}
+        className="size-3 rounded-sm border border-green-300!"
+        data-testid={`${id}-handle-target-left`}
+        style={{ top: "45%" }}
+      />
+      <Handle
+        id={`${id}-source-left`}
+        position={Position.Left}
+        type="source"
+        className="size-3 rounded-full border border-destructive/50!"
+        data-testid={`${id}-handle-source-left`}
+        style={{ top: "55%" }}
+      />
+
+      {/* Top side - input and output */}
+      <Handle
+        id={`${id}-target-top`}
+        position={Position.Top}
+        type="target"
+        className="size-3 rounded-sm border border-green-300!"
+        data-testid={`${id}-handle-target-top`}
+        style={{ left: "45%" }}
+      />
+      <Handle
+        id={`${id}-source-top`}
+        position={Position.Top}
+        type="source"
+        className="size-3 rounded-full border border-destructive/50!"
+        data-testid={`${id}-handle-source-top`}
+        style={{ left: "55%" }}
+      />
+
+      {/* Bottom side - input and output */}
+      <Handle
+        id={`${id}-target-bottom`}
+        position={Position.Bottom}
+        type="target"
+        className="size-3 rounded-sm border border-green-300!"
+        data-testid={`${id}-handle-target-bottom`}
+        style={{ left: "45%" }}
+      />
+      <Handle
+        id={`${id}-source-bottom`}
+        position={Position.Bottom}
+        type="source"
+        className="size-3 rounded-full border border-destructive/50!"
+        data-testid={`${id}-handle-source-bottom`}
+        style={{ left: "55%" }}
+      />
+      {/* Right side - input and output */}
+      <Handle
+        id={`${id}-target-right`}
+        position={Position.Right}
+        type="target"
+        className="size-3 rounded-sm border border-green-300!"
+        data-testid={`${id}-handle-target-right`}
+        style={{ top: "45%" }}
+      />
+      <Handle
+        id={`${id}-source-right`}
+        position={Position.Right}
+        type="source"
+        className="size-3 rounded-full border border-destructive/50!"
+        data-testid={`${id}-handle-source-right`}
+        style={{ top: "55%" }}
       />
       <ContextMenu>
         <ContextMenuTrigger onDoubleClick={handleFocusInspector}>
           <Card
             className={cn(
               "relative min-w-[220px] cursor-pointer border transition-shadow",
-              selected ? "ring-2 ring-ring shadow-lg" : "",
+              selected ? "ring-2 ring-ring shadow-lg" : ""
             )}
             onDoubleClick={handleFocusInspector}
           >
@@ -95,34 +154,6 @@ function FlowNodeComponent({ id, data, selected }: NodeProps) {
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-      {variant === "condition" ? (
-        <>
-          <Handle
-            id={`${id}-source-true`}
-            position={Position.Right}
-            type="source"
-            className="size-3 rounded-full border border-border bg-background"
-            data-testid={`${id}-handle-source-true`}
-            style={{ top: "35%" }}
-          />
-          <Handle
-            id={`${id}-source-false`}
-            position={Position.Right}
-            type="source"
-            className="size-3 rounded-full border border-border bg-background"
-            data-testid={`${id}-handle-source-false`}
-            style={{ top: "65%" }}
-          />
-        </>
-      ) : (
-        <Handle
-          id={`${id}-source`}
-          position={Position.Right}
-          type="source"
-          className="size-3 rounded-full border border-border bg-background"
-          data-testid={`${id}-handle-source`}
-        />
-      )}
     </>
   );
 }
