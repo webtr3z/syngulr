@@ -1,703 +1,969 @@
-# PROMPT: Implementación de Sprinter - Sistema de Gestión de Proyectos
+# PROMPT: Mejoras del Sistema Sprinter - Timeline Interactivo y Corrección de Duplicación
 
-## Objetivo Principal
+## Contexto del Proyecto
 
-Crear un sistema completo de gestión de proyectos tipo Kanban board (similar a ClickUp/Asana) con capacidades de drag-and-drop y vista de timeline, integrado en la aplicación Next.js 15 existente.
+Este proyecto es una aplicación Next.js 15 con el siguiente stack:
 
-## PASO 1: Documentación y Verificación de Fuentes
+- **Arquitectura**: Next.js App Router, TypeScript, Tailwind CSS v4, shadcn/ui
+- **Estado**: Zustand para gestión global
+- **Persistencia**: IndexedDB vía idb-keyval
+- **Drag & Drop**: @hello-pangea/dnd
+- **Convenciones**: Ver `AGENTS.md` y `.cursorrules` para reglas del proyecto
 
-### Instrucciones Críticas
+**Sistema actual**: Sprinter en `/sprinter` - Sistema Kanban con 4 columnas (TO-DO, EN DESARROLLO, PROBANDO, COMPLETADO) y vista de timeline básica.
 
-1. **ANTES DE PROCEDER**, debes estudiar y documentarte sobre react-beautiful-dnd:
+---
 
-   - Repositorio oficial: https://github.com/atlassian/react-beautiful-dnd
-   - Storybook interactivo: https://react-beautiful-dnd.netlify.app/?path=/story/single-vertical-list--basic
+## Objetivos de esta Implementación
 
-2. **VERIFICACIÓN OBLIGATORIA**:
+1. **Corregir duplicación de tareas** al mover entre columnas
+2. **Implementar timeline interactivo** usando shadcn-timeline
+3. **Registrar historial completo** de cambios y movimientos de tareas
 
-   - Si NO puedes acceder o leer cualquiera de las fuentes anteriores
-   - DETÉN la operación inmediatamente
-   - NOTIFICA al usuario con mensaje claro: "⚠️ No se puede acceder a las fuentes de documentación requeridas. Por favor verifica la conectividad o proporciona documentación alternativa."
-   - NO continúes con la implementación
+---
 
-3. **NOTA IMPORTANTE**: react-beautiful-dnd está archivado. Como alternativa moderna, considera usar:
-   - @dnd-kit/core (recomendado para proyectos nuevos)
-   - @hello-pangea/dnd (fork mantenido de react-beautiful-dnd)
-   - Documenta tu elección y justificación al usuario
+## TAREA 1: Corregir Duplicación de Tareas al Mover Entre Columnas
 
-## PASO 2: Creación de la Ruta /sprinter
+### Problema Actual
 
-### Ubicación y Estructura
+Las tareas pueden aparecer duplicadas cuando se mueven de una columna a otra. Debe verificarse que el movimiento sea atómico y que la tarea solo exista en la columna destino.
 
-```
-src/app/(dashboard)/sprinter/
-├── page.tsx              # Página principal con sistema de tabs
-├── components/
-│   ├── Board.tsx         # Componente del tablero Kanban
-│   ├── Column.tsx        # Columna individual (TO-DO, etc.)
-│   ├── TaskCard.tsx      # Tarjeta de tarea con drag-and-drop
-│   ├── TaskForm.tsx      # Formulario para crear tareas
-│   ├── Timeline.tsx      # Vista de línea de tiempo horizontal
-│   └── TimelineTask.tsx  # Tarea en la vista de timeline
-└── store/
-    └── sprinter-store.ts # Zustand store para gestión de estado
-```
+### Diagnóstico Requerido
 
-## PASO 3: Especificaciones del Sistema Sprinter
+**Paso 1**: Verificar la lógica de `moveTask` en el store
 
-### 3.1 Persistencia de Datos
+**Archivo**: `src/app/(dashboard)/sprinter/store/sprinter-store.ts`
 
-**CRÍTICO**: El sistema DEBE persistir datos durante la sesión usando el mismo patrón que el flowchart existente:
+**Análisis actual**:
 
 ```typescript
-// Usar idb-keyval para IndexedDB (ver src/lib/persist.ts como referencia)
-import { del, get, set } from "idb-keyval";
+moveTask: (taskId, targetColumn, position) =>
+  set((state) => {
+    const src = state.tasks.find((t) => t.id === taskId);
+    if (!src) return state;
 
-const SPRINTER_STORAGE_KEY = "syngulr-sprinter-tasks";
+    // Esta lógica debe decrementar posiciones en columna origen
+    const decSrc = state.tasks.map((t) =>
+      t.column === src.column && t.position > src.position
+        ? { ...t, position: t.position - 1 }
+        : t
+    );
 
-// Implementar funciones similares a:
-// - loadSprinterData()
-// - saveSprinterData()
-// - resetSprinterData()
+    // Filtrar tareas de columna destino
+    const dstTasks = decSrc.filter((t) => t.column === targetColumn);
+    const shiftedDst = dstTasks.map((t) =>
+      t.position >= position ? { ...t, position: t.position + 1 } : t
+    );
+
+    // VERIFICAR: ¿Se están combinando correctamente?
+    const others = decSrc.filter((t) => t.column !== targetColumn);
+    const combined = [
+      ...others,
+      ...shiftedDst,
+      {
+        ...src,
+        column: targetColumn,
+        status: targetColumn,
+        position,
+        updatedAt: new Date(),
+      },
+    ];
+
+    const normalized = normalizePositions(combined);
+    queueSave(normalized);
+    return {
+      tasks: normalized,
+      history: pushHistory(state.history, state.tasks),
+    };
+  }),
 ```
 
-### 3.2 Gestión de Estado con Zustand
+**Problema identificado**: La lógica actual puede incluir la tarea original en `others` si no se filtró correctamente.
 
-Crear un store similar a `src/lib/store.ts` pero adaptado para tareas:
+### Solución Implementar
+
+**Refactorizar `moveTask`** para garantizar que la tarea se remueva de la columna origen:
 
 ```typescript
-interface Task {
-  id: string;
-  title: string;
-  type: TaskType;
-  description?: string;
-  column: ColumnId;
-  position: number;
-  createdAt: Date;
-  updatedAt: Date;
-  startDate?: Date;
-  endDate?: Date;
-  status: "todo" | "in-progress" | "testing" | "completed";
-}
+moveTask: (taskId, targetColumn, position) =>
+  set((state) => {
+    const taskToMove = state.tasks.find((t) => t.id === taskId);
+    if (!taskToMove) return state;
 
-type TaskType =
-  | "componente"
-  | "pagina"
-  | "widget"
-  | "estilos"
-  | "diseno"
-  | "api"
-  | "configuracion"
-  | "documentacion";
+    // Si ya está en la columna destino, solo reordenar
+    if (taskToMove.column === targetColumn) {
+      return state; // Dejar que reorderTaskInColumn maneje esto
+    }
 
-type ColumnId = "todo" | "in-progress" | "testing" | "completed";
+    // 1. Remover la tarea de todas las listas
+    const withoutMovedTask = state.tasks.filter((t) => t.id !== taskId);
+
+    // 2. Normalizar posiciones en la columna origen (llenar el hueco)
+    const normalizedSource = withoutMovedTask.map((t) =>
+      t.column === taskToMove.column && t.position > taskToMove.position
+        ? { ...t, position: t.position - 1 }
+        : t
+    );
+
+    // 3. Hacer espacio en la columna destino
+    const withSpaceInDestination = normalizedSource.map((t) =>
+      t.column === targetColumn && t.position >= position
+        ? { ...t, position: t.position + 1 }
+        : t
+    );
+
+    // 4. Insertar la tarea movida en la columna destino
+    const movedTask: Task = {
+      ...taskToMove,
+      column: targetColumn,
+      status: targetColumn,
+      position,
+      updatedAt: new Date(),
+    };
+
+    const nextTasks = [...withSpaceInDestination, movedTask];
+    const normalized = normalizePositions(nextTasks);
+
+    queueSave(normalized);
+    return {
+      tasks: normalized,
+      history: pushHistory(state.history, state.tasks),
+    };
+  }),
+```
+
+### Validación
+
+**Checklist de pruebas**:
+
+- [ ] Mover tarea de TO-DO a EN DESARROLLO → no aparece duplicada
+- [ ] Mover tarea entre cualquier par de columnas → sin duplicación
+- [ ] Las posiciones en ambas columnas se mantienen correctas
+- [ ] La persistencia guarda el estado correcto
+- [ ] Refrescar la página mantiene el estado sin duplicaciones
+
+---
+
+## TAREA 2: Implementar Timeline Interactivo con Historial de Cambios
+
+### Contexto y Referencias
+
+**Componente a usar**: shadcn-timeline
+
+- URL demo: https://shadcn-timeline.vercel.app/
+- GitHub: https://github.com/timDeHof/shadcn-timeline
+
+**Objetivo**: Reemplazar la vista de timeline actual (tabla estática) con un timeline interactivo que muestre el historial completo de cambios de todas las tareas.
+
+### Paso 1: Instalar shadcn-timeline
+
+```bash
+pnpm add @/components/ui/timeline
+# O si está disponible como paquete
+pnpm add shadcn-timeline
+```
+
+**Nota**: Si el componente no está disponible como paquete, copiar el código fuente del componente Timeline desde el repositorio de GitHub y adaptarlo al proyecto.
+
+### Paso 2: Extender el Schema de Tipos
+
+**Archivo**: `src/types/sprinter.ts`
+
+**Agregar nuevo tipo para eventos de timeline**:
+
+```typescript
+import { z } from "zod";
+
+// ... tipos existentes ...
+
+export const taskEventTypeSchema = z.enum([
+  "created",
+  "moved",
+  "updated",
+  "deleted",
+  "status-changed",
+]);
+
+export const taskEventSchema = z.object({
+  id: z.string(),
+  taskId: z.string(),
+  taskTitle: z.string(),
+  eventType: taskEventTypeSchema,
+  timestamp: z.date(),
+  details: z
+    .object({
+      from: z.string().optional(), // Columna origen
+      to: z.string().optional(), // Columna destino
+      field: z.string().optional(), // Campo modificado
+      oldValue: z.string().optional(),
+      newValue: z.string().optional(),
+    })
+    .optional(),
+  userId: z.string().optional(), // Para futuro multiusuario
+});
+
+export const taskEventArraySchema = z.array(taskEventSchema);
+
+export type TaskEvent = z.infer<typeof taskEventSchema>;
+export type TaskEventType = z.infer<typeof taskEventTypeSchema>;
+```
+
+### Paso 3: Actualizar el Store para Registrar Eventos
+
+**Archivo**: `src/app/(dashboard)/sprinter/store/sprinter-store.ts`
+
+**Agregar estado de eventos**:
+
+```typescript
+import type { ColumnId, Task, TaskType, TaskEvent } from "@/types/sprinter";
+import { nanoid } from "nanoid";
 
 interface SprinterStore {
   tasks: Task[];
-  addTask: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
-  moveTask: (taskId: string, targetColumn: ColumnId, position: number) => void;
-  reorderTaskInColumn: (taskId: string, newPosition: number) => void;
-  // Undo/Redo functionality similar to flow store
-  undo: () => void;
-  redo: () => void;
-}
-```
+  events: TaskEvent[]; // NUEVO
+  history: History;
 
-## PASO 4: Las Cuatro Columnas del Tablero
+  // ... métodos existentes ...
 
-### Configuración de Columnas
-
-```typescript
-const COLUMNS = [
-  {
-    id: "todo" as const,
-    title: "TO-DO",
-    description: "Tareas pendientes por iniciar",
-    color: "bg-slate-100 dark:bg-slate-900",
-    allowCreate: true, // Solo esta columna permite creación directa
-  },
-  {
-    id: "in-progress" as const,
-    title: "EN DESARROLLO",
-    description: "Tareas en progreso",
-    color: "bg-blue-50 dark:bg-blue-950",
-    allowCreate: false,
-  },
-  {
-    id: "testing" as const,
-    title: "PROBANDO",
-    description: "En proceso de testing/QA",
-    color: "bg-yellow-50 dark:bg-yellow-950",
-    allowCreate: false,
-  },
-  {
-    id: "completed" as const,
-    title: "COMPLETADO",
-    description: "Tareas finalizadas",
-    color: "bg-green-50 dark:bg-green-950",
-    allowCreate: false,
-  },
-] as const;
-```
-
-### Estilo Minimalista
-
-- Usar shadcn/ui Card components
-- Espaciado consistente: gap-4 entre columnas, gap-2 entre tareas
-- Tipografía: column titles text-lg font-medium, task titles text-sm
-- Colores: usar CSS variables de shadcn (no hex hard-coded)
-
-## PASO 5: Especificaciones de las Tareas
-
-### 5.1 Creación de Tareas (Solo en TO-DO)
-
-```typescript
-// TaskForm.tsx - Solo visible en columna TO-DO
-interface TaskFormProps {
-  onSubmit: (task: NewTask) => void;
+  // NUEVOS métodos
+  addEvent: (event: Omit<TaskEvent, "id" | "timestamp">) => void;
+  getEventsForTask: (taskId: string) => TaskEvent[];
+  getAllEvents: () => TaskEvent[];
 }
 
-interface NewTask {
-  title: string; // Input text, required
-  type: TaskType; // Select dropdown, required
-  description?: string; // Textarea, optional
-}
-```
+export const useSprinterStore = create<SprinterStore>((set, get) => ({
+  tasks: [],
+  events: [], // NUEVO
+  history: { past: [], future: [] },
 
-### 5.2 Componente TaskCard
+  // Método para registrar eventos
+  addEvent: (event) => {
+    const newEvent: TaskEvent = {
+      ...event,
+      id: nanoid(),
+      timestamp: new Date(),
+    };
+    set((state) => ({
+      events: [...state.events, newEvent],
+    }));
+  },
 
-```tsx
-<Card className="group relative">
-  <CardHeader className="p-3">
-    <div className="flex items-start justify-between gap-2">
-      <div className="flex-1 min-w-0">
-        <CardTitle className="text-sm font-medium truncate">
-          {task.title}
-        </CardTitle>
-        <Badge variant="outline" className="mt-1 text-xs">
-          {task.type}
-        </Badge>
-      </div>
+  // Obtener eventos de una tarea específica
+  getEventsForTask: (taskId) => {
+    return get().events.filter((e) => e.taskId === taskId);
+  },
 
-      {/* Botón eliminar - visible en hover */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() => deleteTask(task.id)}
-      >
-        <Trash2 className="h-3 w-3" />
-      </Button>
-    </div>
-  </CardHeader>
-
-  {task.description && (
-    <CardContent className="p-3 pt-0">
-      <p className="text-xs text-muted-foreground line-clamp-2">
-        {task.description}
-      </p>
-    </CardContent>
-  )}
-</Card>
-```
-
-## PASO 6: Drag and Drop entre Columnas y Filas
-
-### Implementación con DnD Library
-
-```typescript
-// Usar DragDropContext, Droppable, Draggable
-<DragDropContext onDragEnd={handleDragEnd}>
-  <div className="grid grid-cols-4 gap-4">
-    {COLUMNS.map((column) => (
-      <Droppable key={column.id} droppableId={column.id}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className={cn(
-              "rounded-lg border p-4 min-h-[500px]",
-              column.color,
-              snapshot.isDraggingOver && "ring-2 ring-primary"
-            )}
-          >
-            <h3 className="text-lg font-medium mb-4">{column.title}</h3>
-
-            {/* Formulario solo en TO-DO */}
-            {column.allowCreate && <TaskForm onSubmit={addTask} />}
-
-            {/* Lista de tareas */}
-            <div className="space-y-2">
-              {getTasksForColumn(column.id).map((task, index) => (
-                <Draggable key={task.id} draggableId={task.id} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className={snapshot.isDragging ? "opacity-50" : ""}
-                    >
-                      <TaskCard task={task} />
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          </div>
-        )}
-      </Droppable>
-    ))}
-  </div>
-</DragDropContext>
-```
-
-### Lógica de handleDragEnd
-
-```typescript
-const handleDragEnd = (result: DropResult) => {
-  const { destination, source, draggableId } = result;
-
-  if (!destination) return;
-
-  if (
-    destination.droppableId === source.droppableId &&
-    destination.index === source.index
-  ) {
-    return; // No movement
-  }
-
-  // Mover entre columnas
-  if (destination.droppableId !== source.droppableId) {
-    moveTask(
-      draggableId,
-      destination.droppableId as ColumnId,
-      destination.index
+  // Obtener todos los eventos ordenados
+  getAllEvents: () => {
+    return get().events.sort(
+      (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
     );
-  } else {
-    // Reordenar dentro de la misma columna
-    reorderTaskInColumn(draggableId, destination.index);
-  }
-};
+  },
+
+  // MODIFICAR addTask para registrar evento
+  addTask: ({ title, type, description }) =>
+    set((state) => {
+      const now = new Date();
+      const taskId = nanoid();
+      const next: Task[] = [
+        ...state.tasks,
+        {
+          id: taskId,
+          title,
+          type,
+          description,
+          column: "todo",
+          position: state.tasks.filter((t) => t.column === "todo").length,
+          createdAt: now,
+          updatedAt: now,
+          status: "todo",
+        },
+      ];
+
+      // REGISTRAR EVENTO
+      const event: TaskEvent = {
+        id: nanoid(),
+        taskId,
+        taskTitle: title,
+        eventType: "created",
+        timestamp: now,
+        details: {
+          to: "todo",
+        },
+      };
+
+      queueSave(next);
+      return {
+        tasks: next,
+        events: [...state.events, event],
+        history: pushHistory(state.history, state.tasks),
+      };
+    }),
+
+  // MODIFICAR moveTask para registrar evento
+  moveTask: (taskId, targetColumn, position) =>
+    set((state) => {
+      const taskToMove = state.tasks.find((t) => t.id === taskId);
+      if (!taskToMove) return state;
+      if (taskToMove.column === targetColumn) return state;
+
+      // ... lógica de movimiento (ver Tarea 1) ...
+
+      // REGISTRAR EVENTO DE MOVIMIENTO
+      const event: TaskEvent = {
+        id: nanoid(),
+        taskId,
+        taskTitle: taskToMove.title,
+        eventType: "moved",
+        timestamp: new Date(),
+        details: {
+          from: taskToMove.column,
+          to: targetColumn,
+        },
+      };
+
+      queueSave(normalized);
+      return {
+        tasks: normalized,
+        events: [...state.events, event],
+        history: pushHistory(state.history, state.tasks),
+      };
+    }),
+
+  // MODIFICAR updateTask para registrar evento
+  updateTask: (id, updates) =>
+    set((state) => {
+      const task = state.tasks.find((t) => t.id === id);
+      if (!task) return state;
+
+      const next = state.tasks.map((t) =>
+        t.id === id ? { ...t, ...updates, updatedAt: new Date() } : t
+      );
+
+      // REGISTRAR EVENTO POR CADA CAMPO MODIFICADO
+      const events: TaskEvent[] = [];
+      Object.keys(updates).forEach((field) => {
+        if (field !== "updatedAt") {
+          events.push({
+            id: nanoid(),
+            taskId: id,
+            taskTitle: task.title,
+            eventType: "updated",
+            timestamp: new Date(),
+            details: {
+              field,
+              oldValue: String(task[field as keyof Task] ?? ""),
+              newValue: String(updates[field as keyof Task] ?? ""),
+            },
+          });
+        }
+      });
+
+      queueSave(next);
+      return {
+        tasks: next,
+        events: [...state.events, ...events],
+        history: pushHistory(state.history, state.tasks),
+      };
+    }),
+
+  // MODIFICAR deleteTask para registrar evento
+  deleteTask: (id) =>
+    set((state) => {
+      const deleted = state.tasks.find((t) => t.id === id);
+      if (!deleted) return state;
+
+      const next = state.tasks
+        .filter((t) => t.id !== id)
+        .map((t) =>
+          t.column === deleted.column && t.position > deleted.position
+            ? { ...t, position: t.position - 1 }
+            : t
+        );
+
+      // REGISTRAR EVENTO
+      const event: TaskEvent = {
+        id: nanoid(),
+        taskId: id,
+        taskTitle: deleted.title,
+        eventType: "deleted",
+        timestamp: new Date(),
+        details: {
+          from: deleted.column,
+        },
+      };
+
+      queueSave(next);
+      return {
+        tasks: next,
+        events: [...state.events, event],
+        history: pushHistory(state.history, state.tasks),
+      };
+    }),
+}));
 ```
 
-## PASO 7: Eliminación de Tareas
+### Paso 4: Actualizar Persistencia
 
-### Icon Button para Eliminar
+**Archivo**: `src/lib/sprinter-persist.ts`
 
-- Usar Trash2 icon de lucide-react
-- Visible solo en hover de la tarjeta
-- Confirmar eliminación con diálogo (opcional pero recomendado)
-
-```tsx
-// Opcional: Diálogo de confirmación
-<AlertDialog>
-  <AlertDialogTrigger asChild>
-    <Button variant="ghost" size="icon">
-      <Trash2 className="h-3 w-3" />
-    </Button>
-  </AlertDialogTrigger>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>¿Eliminar tarea?</AlertDialogTitle>
-      <AlertDialogDescription>
-        Esta acción no se puede deshacer.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-      <AlertDialogAction onClick={() => deleteTask(task.id)}>
-        Eliminar
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
-```
-
-## PASO 8: Sistema de Tabs (Tablero y Línea de Tiempo)
-
-### Implementación de Tabs
-
-```tsx
-// page.tsx principal
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-export default function SprinterPage() {
-  return (
-    <div className="container mx-auto max-w-7xl p-6 md:p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          Sprinter
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gestiona tus tareas y proyectos de forma visual
-        </p>
-      </div>
-
-      <Tabs defaultValue="board" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="board" className="gap-2">
-            <LayoutGrid className="h-4 w-4" />
-            Tablero
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="gap-2">
-            <Calendar className="h-4 w-4" />
-            Línea de Tiempo
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="board" className="mt-0">
-          <Board />
-        </TabsContent>
-
-        <TabsContent value="timeline" className="mt-0">
-          <Timeline />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-```
-
-## PASO 9: Línea de Tiempo Horizontal
-
-### Especificaciones de la Timeline
+**Agregar persistencia de eventos**:
 
 ```typescript
-// Timeline.tsx
-interface TimelineProps {
-  tasks: Task[];
-  viewMode: "day" | "week" | "month"; // Selector de granularidad
-  startDate: Date;
-  endDate: Date;
+import { del, get, set } from "idb-keyval";
+import {
+  taskArraySchema,
+  taskEventArraySchema,
+  type Task,
+  type TaskEvent,
+} from "@/types/sprinter";
+
+const SPRINTER_TASKS_KEY = "syngulr-sprinter-tasks";
+const SPRINTER_EVENTS_KEY = "syngulr-sprinter-events";
+
+export async function loadSprinterData(): Promise<Task[] | null> {
+  try {
+    const stored = await get(SPRINTER_TASKS_KEY);
+    if (!stored) return null;
+    return taskArraySchema.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveSprinterData(tasks: Task[]): Promise<void> {
+  try {
+    await set(SPRINTER_TASKS_KEY, tasks);
+  } catch {
+    // noop
+  }
+}
+
+export async function loadSprinterEvents(): Promise<TaskEvent[] | null> {
+  try {
+    const stored = await get(SPRINTER_EVENTS_KEY);
+    if (!stored) return null;
+    return taskEventArraySchema.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveSprinterEvents(events: TaskEvent[]): Promise<void> {
+  try {
+    await set(SPRINTER_EVENTS_KEY, events);
+  } catch {
+    // noop
+  }
+}
+
+export async function resetSprinterData(): Promise<void> {
+  try {
+    await del(SPRINTER_TASKS_KEY);
+    await del(SPRINTER_EVENTS_KEY);
+  } catch {
+    // noop
+  }
 }
 ```
 
-### Componente Timeline
+### Paso 5: Crear Componente de Timeline Interactivo
+
+**Archivo**: `src/app/(dashboard)/sprinter/components/InteractiveTimeline.tsx`
 
 ```tsx
-<div className="space-y-6">
-  {/* Controles de vista */}
-  <div className="flex items-center justify-between">
-    <div className="flex gap-2">
-      <Button
-        variant={viewMode === "day" ? "default" : "outline"}
-        size="sm"
-        onClick={() => setViewMode("day")}
-      >
-        Día
-      </Button>
-      <Button
-        variant={viewMode === "week" ? "default" : "outline"}
-        size="sm"
-        onClick={() => setViewMode("week")}
-      >
-        Semana
-      </Button>
-      <Button
-        variant={viewMode === "month" ? "default" : "outline"}
-        size="sm"
-        onClick={() => setViewMode("month")}
-      >
-        Mes
-      </Button>
-    </div>
+"use client";
 
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={previousPeriod}>
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-      <Button variant="outline" size="sm" onClick={nextPeriod}>
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-    </div>
-  </div>
+import { useEffect, useMemo } from "react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Clock, ArrowRight, Plus, Edit, Trash2, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSprinterStore } from "../store/sprinter-store";
+import { loadSprinterEvents, saveSprinterEvents } from "@/lib/sprinter-persist";
+import type { TaskEvent } from "@/types/sprinter";
 
-  {/* Timeline Grid */}
-  <div className="relative overflow-x-auto">
-    {/* Header con fechas */}
-    <div className="flex border-b">
-      {timelineSegments.map((segment) => (
-        <div
-          key={segment.date.toISOString()}
-          className="min-w-[100px] flex-1 p-2 text-center text-xs font-medium border-r"
-        >
-          {formatDate(segment.date, viewMode)}
-        </div>
-      ))}
-    </div>
+// Componente Timeline (adaptar desde shadcn-timeline)
+// Estructura básica para referencia
+interface TimelineItemProps {
+  event: TaskEvent;
+  isLast: boolean;
+}
 
-    {/* Filas de tareas */}
-    <div className="space-y-1">
-      {tasks.map((task) => (
-        <div key={task.id} className="flex items-center h-12 border-b">
-          {/* Nombre de tarea */}
-          <div className="min-w-[200px] p-2 text-sm font-medium truncate border-r">
-            {task.title}
-            <Badge variant="outline" className="ml-2 text-xs">
-              {getStatusBadge(task.status)}
-            </Badge>
-          </div>
+function TimelineItem({ event, isLast }: TimelineItemProps) {
+  const getIcon = () => {
+    switch (event.eventType) {
+      case "created":
+        return <Plus className="h-4 w-4" />;
+      case "moved":
+        return <ArrowRight className="h-4 w-4" />;
+      case "updated":
+        return <Edit className="h-4 w-4" />;
+      case "deleted":
+        return <Trash2 className="h-4 w-4" />;
+      case "status-changed":
+        return <RefreshCw className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
 
-          {/* Barra de progreso en la timeline */}
-          <div className="flex-1 relative">
-            <TimelineTaskBar
-              task={task}
-              startDate={timelineStart}
-              endDate={timelineEnd}
-              viewMode={viewMode}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-</div>
-```
+  const getEventColor = () => {
+    switch (event.eventType) {
+      case "created":
+        return "bg-green-500";
+      case "moved":
+        return "bg-blue-500";
+      case "updated":
+        return "bg-yellow-500";
+      case "deleted":
+        return "bg-red-500";
+      case "status-changed":
+        return "bg-purple-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
 
-### TimelineTaskBar Component
-
-```tsx
-// Calcula posición y ancho basado en fechas
-const TimelineTaskBar: React.FC<TimelineTaskBarProps> = ({
-  task,
-  startDate,
-  endDate,
-  viewMode,
-}) => {
-  const { left, width } = calculatePosition(
-    task.startDate,
-    task.endDate,
-    startDate,
-    endDate
-  );
-
-  const statusColors = {
-    todo: "bg-slate-400",
-    "in-progress": "bg-blue-500",
-    testing: "bg-yellow-500",
-    completed: "bg-green-500",
+  const getEventDescription = () => {
+    switch (event.eventType) {
+      case "created":
+        return `Tarea creada en ${event.details?.to?.toUpperCase()}`;
+      case "moved":
+        return `Movida de ${event.details?.from?.toUpperCase()} → ${event.details?.to?.toUpperCase()}`;
+      case "updated":
+        return `Campo "${event.details?.field}" actualizado`;
+      case "deleted":
+        return `Tarea eliminada de ${event.details?.from?.toUpperCase()}`;
+      default:
+        return "Cambio registrado";
+    }
   };
 
   return (
-    <div
-      className={cn(
-        "absolute h-6 rounded-md cursor-pointer transition-all hover:opacity-80",
-        statusColors[task.status]
+    <div className="relative flex gap-4 pb-8">
+      {/* Línea vertical */}
+      {!isLast && (
+        <div className="absolute left-5 top-5 h-full w-[2px] bg-border" />
       )}
-      style={{
-        left: `${left}%`,
-        width: `${width}%`,
-      }}
-      title={`${task.title} - ${task.status}`}
-    >
-      <div className="px-2 py-1 text-xs text-white truncate">{task.title}</div>
+
+      {/* Icono */}
+      <div
+        className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full ${getEventColor()} text-white`}
+      >
+        {getIcon()}
+      </div>
+
+      {/* Contenido */}
+      <Card className="flex-1">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-base font-medium">
+                {event.taskTitle}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {getEventDescription()}
+              </p>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {format(event.timestamp, "PPp", { locale: es })}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        {event.details && (
+          <CardContent className="pb-3 pt-0">
+            <div className="text-xs text-muted-foreground space-y-1">
+              {event.details.field && (
+                <div>
+                  <span className="font-medium">Campo:</span>{" "}
+                  {event.details.field}
+                </div>
+              )}
+              {event.details.oldValue && (
+                <div>
+                  <span className="font-medium">Valor anterior:</span>{" "}
+                  {event.details.oldValue}
+                </div>
+              )}
+              {event.details.newValue && (
+                <div>
+                  <span className="font-medium">Nuevo valor:</span>{" "}
+                  {event.details.newValue}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
     </div>
   );
-};
+}
+
+export function InteractiveTimeline() {
+  const events = useSprinterStore((s) => s.getAllEvents());
+
+  useEffect(() => {
+    // Cargar eventos al montar
+    (async () => {
+      const stored = await loadSprinterEvents();
+      if (stored) {
+        useSprinterStore.setState({ events: stored });
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    // Guardar eventos cuando cambien
+    if (events.length > 0) {
+      saveSprinterEvents(events);
+    }
+  }, [events]);
+
+  const groupedEvents = useMemo(() => {
+    const groups: Record<string, TaskEvent[]> = {};
+    events.forEach((event) => {
+      const dateKey = format(event.timestamp, "yyyy-MM-dd");
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(event);
+    });
+    return groups;
+  }, [events]);
+
+  if (events.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+        <p className="text-lg font-medium">No hay eventos registrados</p>
+        <p className="text-sm text-muted-foreground">
+          Crea, mueve o modifica tareas para ver su historial aquí
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Historial de Cambios</h2>
+          <p className="text-sm text-muted-foreground">
+            {events.length} evento{events.length !== 1 ? "s" : ""} registrado
+            {events.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {Object.entries(groupedEvents)
+          .sort(([a], [b]) => b.localeCompare(a))
+          .map(([dateKey, dayEvents]) => (
+            <div key={dateKey}>
+              <h3 className="mb-4 text-sm font-medium text-muted-foreground">
+                {format(new Date(dateKey), "PPPP", { locale: es })}
+              </h3>
+              <div className="space-y-4">
+                {dayEvents.map((event, index) => (
+                  <TimelineItem
+                    key={event.id}
+                    event={event}
+                    isLast={index === dayEvents.length - 1}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
 ```
 
-### Información Mostrada en Timeline
+### Paso 6: Actualizar la Vista de Timeline en SprinterTabs
 
-- **Nombre de la tarea**: truncado si es muy largo
-- **Fechas de ejecución**: startDate y endDate (si están definidas)
-- **Estado actual**: representado por color de la barra
-  - TO-DO: gris (slate)
-  - EN DESARROLLO: azul (blue)
-  - PROBANDO: amarillo (yellow)
-  - COMPLETADO: verde (green)
-- **Tipo de tarea**: mostrado en badge junto al nombre
+**Archivo**: `src/app/(dashboard)/sprinter/components/Timeline.tsx`
 
-## Requerimientos Técnicos
-
-### Dependencias a Instalar
-
-```bash
-# Si usas @hello-pangea/dnd (fork mantenido)
-pnpm add @hello-pangea/dnd
-
-# O si usas @dnd-kit (recomendado moderno)
-pnpm add @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
-
-# Para persistencia (ya instalado)
-# idb-keyval
-
-# Para gestión de estado (ya instalado)
-# zustand
-
-# Para validación
-pnpm add zod
-
-# Para manejo de fechas
-pnpm add date-fns
-```
-
-### TypeScript Types
-
-```typescript
-// src/types/sprinter.ts
-import { z } from "zod";
-
-export const taskTypeSchema = z.enum([
-  "componente",
-  "pagina",
-  "widget",
-  "estilos",
-  "diseno",
-  "api",
-  "configuracion",
-  "documentacion",
-]);
-
-export const columnIdSchema = z.enum([
-  "todo",
-  "in-progress",
-  "testing",
-  "completed",
-]);
-
-export const taskSchema = z.object({
-  id: z.string(),
-  title: z.string().min(1, "El título es requerido"),
-  type: taskTypeSchema,
-  description: z.string().optional(),
-  column: columnIdSchema,
-  position: z.number(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
-  status: columnIdSchema,
-});
-
-export type Task = z.infer<typeof taskSchema>;
-export type TaskType = z.infer<typeof taskTypeSchema>;
-export type ColumnId = z.infer<typeof columnIdSchema>;
-```
-
-## Principios de Diseño y UX
-
-### Minimalismo y Elegancia
-
-1. **Espaciado consistente**: Usar escala 2,3,4,6,8,10,12
-2. **Tipografía clara**:
-   - Títulos de página: text-2xl md:text-3xl font-semibold
-   - Títulos de sección: text-lg font-medium
-   - Cuerpo: text-sm md:text-base
-3. **Colores**: Solo CSS variables de shadcn, NO hex hard-coded
-4. **Feedback visual**:
-   - Hover states en todos los elementos interactivos
-   - Drag preview con opacidad reducida
-   - Drop zones destacados durante drag
-5. **Responsive**: Mobile-first, funcional en todas las pantallas
-
-### Accesibilidad
-
-- Todos los botones con aria-label apropiado
-- Navegación por teclado en formularios
-- Focus visible en todos los elementos interactivos
-- Screen reader friendly
-
-### Performance
-
-- Usar React.memo en TaskCard para evitar re-renders innecesarios
-- Virtualización si hay >100 tareas (react-window)
-- Debounce en auto-save (300ms)
-- Optimistic UI updates
-
-## Testing y Validación
-
-### Casos de Prueba Esenciales
-
-1. ✅ Crear tarea en TO-DO con todos los campos
-2. ✅ Mover tarea entre columnas con drag-and-drop
-3. ✅ Reordenar tareas dentro de la misma columna
-4. ✅ Eliminar tarea con confirmación
-5. ✅ Persistencia: refrescar página y verificar datos
-6. ✅ Cambiar entre tabs Tablero/Timeline
-7. ✅ Timeline muestra tareas con fechas correctamente
-8. ✅ Cambiar vista de timeline (día/semana/mes)
-9. ✅ Navegación temporal en timeline (anterior/siguiente)
-10. ✅ Responsive en móvil y tablet
-
-## Entregables
-
-### Archivos a Crear
-
-1. `src/app/(dashboard)/sprinter/page.tsx` - Página principal con tabs
-2. `src/app/(dashboard)/sprinter/components/Board.tsx` - Tablero Kanban
-3. `src/app/(dashboard)/sprinter/components/Column.tsx` - Columna individual
-4. `src/app/(dashboard)/sprinter/components/TaskCard.tsx` - Tarjeta de tarea
-5. `src/app/(dashboard)/sprinter/components/TaskForm.tsx` - Formulario de creación
-6. `src/app/(dashboard)/sprinter/components/Timeline.tsx` - Vista de timeline
-7. `src/app/(dashboard)/sprinter/components/TimelineTaskBar.tsx` - Barra de tarea en timeline
-8. `src/app/(dashboard)/sprinter/store/sprinter-store.ts` - Zustand store
-9. `src/lib/sprinter-persist.ts` - Funciones de persistencia
-10. `src/types/sprinter.ts` - TypeScript types y schemas
-
-### Documentación Adicional
-
-- Comentarios JSDoc en funciones complejas
-- README.md en la carpeta sprinter explicando arquitectura
-- Ejemplos de uso del store
-- Guía de estilos aplicados
-
-## Checklist Final
-
-Antes de considerar la tarea completa, verifica:
-
-- [ ] react-beautiful-dnd (o alternativa) documentado y comprendido
-- [ ] Ruta /sprinter creada y accesible desde navegación
-- [ ] Las 4 columnas funcionan correctamente
-- [ ] Creación de tareas solo en TO-DO
-- [ ] Drag-and-drop funcional entre columnas y dentro de columnas
-- [ ] Eliminación de tareas con botón de icono
-- [ ] Sistema de tabs implementado (Tablero y Línea de Tiempo)
-- [ ] Timeline horizontal con fechas, estados y tipos visibles
-- [ ] Persistencia de datos funcionando con IndexedDB
-- [ ] Estado global con Zustand funcionando
-- [ ] Diseño minimalista usando shadcn/ui
-- [ ] Responsive en móvil, tablet y desktop
-- [ ] TypeScript sin errores
-- [ ] Accesibilidad básica implementada
-- [ ] Performance optimizada (memo, debounce)
-
-## Notas Adicionales
-
-### Integración con Navegación
-
-Actualizar `src/components/sidebar/MainNav.tsx` para incluir enlace a Sprinter:
+**Reemplazar el contenido actual** con:
 
 ```tsx
-const navItems = [
-  // ... items existentes
-  {
-    title: "Sprinter",
-    href: "/sprinter",
-    icon: KanbanSquare, // de lucide-react
-    description: "Gestiona tus proyectos",
-  },
-];
+"use client";
+
+import { InteractiveTimeline } from "./InteractiveTimeline";
+
+export function Timeline() {
+  return <InteractiveTimeline />;
+}
 ```
 
-### Metadata de la Página
+O mejor aún, eliminar `Timeline.tsx` y actualizar `SprinterTabs.tsx` para importar directamente `InteractiveTimeline`.
 
-```typescript
-export const metadata: Metadata = {
-  title: "Sprinter - Gestión de Proyectos",
-  description:
-    "Sistema de gestión de tareas con tablero Kanban y línea de tiempo",
-};
+**Archivo**: `src/app/(dashboard)/sprinter/SprinterTabs.tsx`
+
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const Board = dynamic(() => import("./components/Board").then((m) => m.Board), {
+  ssr: false,
+});
+
+const InteractiveTimeline = dynamic(
+  () =>
+    import("./components/InteractiveTimeline").then(
+      (m) => m.InteractiveTimeline
+    ),
+  { ssr: false }
+);
+
+export function SprinterTabs() {
+  return (
+    <Tabs defaultValue="board" className="w-full">
+      <TabsList className="mb-6">
+        <TabsTrigger value="board" className="gap-2">
+          Tablero
+        </TabsTrigger>
+        <TabsTrigger value="timeline" className="gap-2">
+          Historial
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="board" className="mt-0">
+        <Board />
+      </TabsContent>
+
+      <TabsContent value="timeline" className="mt-0">
+        <InteractiveTimeline />
+      </TabsContent>
+    </Tabs>
+  );
+}
 ```
 
 ---
 
-## Conclusión
+## TAREA 3: Características Interactivas y Dinámicas del Timeline
 
-Este prompt debe ser ejecutado secuencialmente, validando cada paso antes de continuar al siguiente. La implementación debe ser incremental, probando cada componente de forma aislada antes de integrarlo al sistema completo.
+### Funcionalidades Adicionales a Implementar
 
-**RECORDATORIO FINAL**: Si en cualquier momento no puedes acceder a la documentación requerida o encuentras limitaciones técnicas, DETÉN la implementación y notifica al usuario inmediatamente.
+#### 1. Filtrado de Eventos
 
-¡Éxito con la implementación! 🚀
+Agregar controles para filtrar por tipo de evento:
+
+```tsx
+// En InteractiveTimeline.tsx
+const [filter, setFilter] = useState<TaskEventType | "all">("all");
+
+const filteredEvents = useMemo(() => {
+  if (filter === "all") return events;
+  return events.filter((e) => e.eventType === filter);
+}, [events, filter]);
+
+// UI de filtros
+<div className="flex gap-2 mb-4">
+  <Button
+    variant={filter === "all" ? "default" : "outline"}
+    size="sm"
+    onClick={() => setFilter("all")}
+  >
+    Todos
+  </Button>
+  <Button
+    variant={filter === "created" ? "default" : "outline"}
+    size="sm"
+    onClick={() => setFilter("created")}
+  >
+    Creados
+  </Button>
+  <Button
+    variant={filter === "moved" ? "default" : "outline"}
+    size="sm"
+    onClick={() => setFilter("moved")}
+  >
+    Movidos
+  </Button>
+  {/* ... más filtros ... */}
+</div>;
+```
+
+#### 2. Búsqueda de Tareas
+
+Agregar input de búsqueda por título de tarea:
+
+```tsx
+const [searchQuery, setSearchQuery] = useState("");
+
+const searchedEvents = useMemo(() => {
+  if (!searchQuery) return filteredEvents;
+  return filteredEvents.filter((e) =>
+    e.taskTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+}, [filteredEvents, searchQuery]);
+
+// UI
+<Input
+  placeholder="Buscar por tarea..."
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  className="max-w-sm"
+/>;
+```
+
+#### 3. Expandir/Colapsar Detalles
+
+Hacer que cada evento sea expandible para ver más detalles:
+
+```tsx
+const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+
+const toggleExpand = (eventId: string) => {
+  setExpandedEvents((prev) => {
+    const next = new Set(prev);
+    if (next.has(eventId)) {
+      next.delete(eventId);
+    } else {
+      next.add(eventId);
+    }
+    return next;
+  });
+};
+
+// En TimelineItem
+<CardContent className="cursor-pointer" onClick={() => toggleExpand(event.id)}>
+  {expandedEvents.has(event.id) && (
+    <div className="mt-2 space-y-1">{/* Detalles expandidos */}</div>
+  )}
+</CardContent>;
+```
+
+#### 4. Animaciones
+
+Agregar animaciones con Framer Motion (opcional):
+
+```bash
+pnpm add framer-motion
+```
+
+```tsx
+import { motion } from "framer-motion";
+
+<motion.div
+  initial={{ opacity: 0, x: -20 }}
+  animate={{ opacity: 1, x: 0 }}
+  transition={{ duration: 0.3 }}
+>
+  <TimelineItem ... />
+</motion.div>
+```
+
+---
+
+## Validación y Testing
+
+### Checklist de Funcionalidad
+
+**Corrección de Duplicación**:
+
+- [ ] Las tareas no se duplican al mover entre columnas
+- [ ] Las posiciones se actualizan correctamente
+- [ ] La persistencia guarda el estado correcto
+
+**Timeline Interactivo**:
+
+- [ ] Se registran eventos al crear tareas
+- [ ] Se registran eventos al mover tareas
+- [ ] Se registran eventos al actualizar tareas
+- [ ] Se registran eventos al eliminar tareas
+- [ ] Los eventos se persisten en IndexedDB
+- [ ] Los eventos se muestran en orden cronológico inverso
+- [ ] Los eventos se agrupan por día
+- [ ] Los iconos y colores son apropiados para cada tipo de evento
+- [ ] El timeline es responsive (móvil, tablet, desktop)
+
+**Interactividad**:
+
+- [ ] Filtrado por tipo de evento funciona
+- [ ] Búsqueda por tarea funciona
+- [ ] Expandir/colapsar detalles funciona (si implementado)
+- [ ] Animaciones son suaves (si implementado)
+
+### Comandos de Validación
+
+```bash
+# Verificar tipos
+pnpm typecheck
+
+# Verificar linting
+pnpm lint
+
+# Probar en desarrollo
+pnpm dev
+```
+
+### Escenarios de Prueba
+
+1. **Crear tarea** → Verificar evento "created" en timeline
+2. **Mover tarea** de TO-DO a EN DESARROLLO → Verificar evento "moved"
+3. **Actualizar título** de tarea → Verificar evento "updated"
+4. **Eliminar tarea** → Verificar evento "deleted"
+5. **Refrescar página** → Verificar que eventos persisten
+6. **Filtrar por "moved"** → Solo ver movimientos
+7. **Buscar tarea** → Filtrar eventos por título
+
+---
+
+## Consideraciones de Diseño
+
+### Principios a Seguir
+
+1. **Consistencia**: Usar componentes shadcn/ui existentes
+2. **No hard-coded colors**: Usar CSS variables (`bg-background`, `text-foreground`, etc.)
+3. **Accesibilidad**: aria-labels, navegación por teclado, focus visible
+4. **Responsive**: Mobile-first, funcional en todas las pantallas
+5. **Performance**: Memoización con useMemo, virtualización si >100 eventos
+
+### Estilo Visual
+
+- **Timeline vertical** con línea conectora
+- **Iconos** visuales para cada tipo de evento
+- **Colores** semánticos pero usando variables CSS
+- **Agrupación** por día para mejor organización
+- **Badges** para timestamps relativos ("hace 5 minutos")
+
+---
+
+## Resultado Esperado
+
+### Antes:
+
+- ✗ Tareas duplicadas al mover entre columnas
+- ✗ Timeline estático tipo tabla
+- ✗ Sin historial de cambios
+
+### Después:
+
+- ✓ Movimiento atómico de tareas sin duplicación
+- ✓ Timeline interactivo con eventos visuales
+- ✓ Historial completo de cambios y movimientos
+- ✓ Filtrado y búsqueda de eventos
+- ✓ Persistencia completa de eventos
+- ✓ UX dinámica y profesional
+
+---
+
+## Referencias
+
+- **Proyecto**: `AGENTS.md` - Convenciones y stack
+- **Código**: `.cursorrules` - Guías de desarrollo
+- **shadcn-timeline**: https://shadcn-timeline.vercel.app/
+- **GitHub**: https://github.com/timDeHof/shadcn-timeline
+- **Componentes**: `src/components/ui/` - shadcn/ui
+- **Store**: `src/app/(dashboard)/sprinter/store/sprinter-store.ts`
+- **Tipos**: `src/types/sprinter.ts`
+
+---
+
+**¡Importante!**: Seguir estrictamente las convenciones del proyecto. Usar Server Components donde sea posible, Client Components solo cuando sea necesario (`"use client"`). No introducir nuevas dependencias sin justificación. Mantener el código DRY, legible y bien tipado.

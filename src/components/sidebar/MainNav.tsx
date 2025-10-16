@@ -8,6 +8,7 @@ import {
   Home,
   LayoutDashboard,
   Layers,
+  KanbanSquare,
   Settings,
   Sparkles,
   Workflow,
@@ -43,6 +44,11 @@ const navItems = [
     href: "/generator",
     label: "Generador",
     icon: Sparkles,
+  },
+  {
+    href: "/sprinter",
+    label: "Sprinter",
+    icon: KanbanSquare,
   },
   {
     href: "/settings",
