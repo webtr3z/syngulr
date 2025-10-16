@@ -3,42 +3,27 @@
 import { useActiveAccount } from "thirdweb/react";
 
 import { WalletConnect } from "@/components/auth/WalletConnect";
-import { cn } from "@/lib/utils";
 
-interface UserWalletProps {
-  collapsed?: boolean;
-}
-
-export function UserWallet({ collapsed = false }: UserWalletProps) {
+export function UserWallet() {
   const account = useActiveAccount();
 
   if (!account) {
     return (
-      <div
-        className={cn(
-          "border-t border-border p-4",
-          collapsed && "flex flex-col items-center gap-3 px-2"
-        )}
-      >
+      <div className="flex items-center gap-3">
         <WalletConnect />
       </div>
     );
   }
 
   return (
-    <div
-      className={cn(
-        "border-t border-border p-4",
-        collapsed ? "px-2 text-center" : "space-y-2"
-      )}
-    >
-      <p className="text-xs text-muted-foreground">Wallet conectada</p>
-      {/* <p className="font-mono text-sm font-medium">
-        {maskAddress(account.address)}
-      </p> */}
-      <div className={collapsed ? "mt-3" : "pt-2"}>
-        <WalletConnect />
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-green-500" aria-hidden="true" />
+        <p className="text-sm font-medium text-muted-foreground">
+          Wallet conectada
+        </p>
       </div>
+      <WalletConnect />
     </div>
   );
 }

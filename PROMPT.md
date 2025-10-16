@@ -1,713 +1,703 @@
-# 🎯 Syngulr Dashboard Enhancement Tasks
+# PROMPT: Implementación de Sprinter - Sistema de Gestión de Proyectos
 
-## Context
+## Objetivo Principal
 
-You are working on **Syngulr**, a Next.js 15 application with:
+Crear un sistema completo de gestión de proyectos tipo Kanban board (similar a ClickUp/Asana) con capacidades de drag-and-drop y vista de timeline, integrado en la aplicación Next.js 15 existente.
 
-- **Framework**: Next.js 15.5.4 (App Router)
-- **React**: 19.1.0
-- **TypeScript**: Full type safety required
-- **Styling**: Tailwind CSS 4.x
-- **UI Components**: Shadcn/ui components in `src/components/ui/`
-- **Language**: Spanish (all UI text)
-- **Theme**: Dark/Light mode with `next-themes`
-- **Authentication**: Thirdweb wallet-based NFT gating
+## PASO 1: Documentación y Verificación de Fuentes
 
----
+### Instrucciones Críticas
 
-## 🎯 Objectives
+1. **ANTES DE PROCEDER**, debes estudiar y documentarte sobre react-beautiful-dnd:
 
-You must complete **3 specific tasks**. Each task has detailed requirements below.
+   - Repositorio oficial: https://github.com/atlassian/react-beautiful-dnd
+   - Storybook interactivo: https://react-beautiful-dnd.netlify.app/?path=/story/single-vertical-list--basic
 
----
+2. **VERIFICACIÓN OBLIGATORIA**:
 
-## 📋 Task 1: Move Wallet Widget to Top-Right Corner
+   - Si NO puedes acceder o leer cualquiera de las fuentes anteriores
+   - DETÉN la operación inmediatamente
+   - NOTIFICA al usuario con mensaje claro: "⚠️ No se puede acceder a las fuentes de documentación requeridas. Por favor verifica la conectividad o proporciona documentación alternativa."
+   - NO continúes con la implementación
 
-### Current State
+3. **NOTA IMPORTANTE**: react-beautiful-dnd está archivado. Como alternativa moderna, considera usar:
+   - @dnd-kit/core (recomendado para proyectos nuevos)
+   - @hello-pangea/dnd (fork mantenido de react-beautiful-dnd)
+   - Documenta tu elección y justificación al usuario
 
-- `UserWallet` component is currently at the **bottom of the sidebar** in `MainLayout`
-- Located in: `src/components/sidebar/UserWallet.tsx`
-- Rendered at bottom of: `src/components/sidebar/MainNav.tsx`
+## PASO 2: Creación de la Ruta /sprinter
 
-### Required Changes
+### Ubicación y Estructura
 
-#### 1.1 Remove from Sidebar
+```
+src/app/(dashboard)/sprinter/
+├── page.tsx              # Página principal con sistema de tabs
+├── components/
+│   ├── Board.tsx         # Componente del tablero Kanban
+│   ├── Column.tsx        # Columna individual (TO-DO, etc.)
+│   ├── TaskCard.tsx      # Tarjeta de tarea con drag-and-drop
+│   ├── TaskForm.tsx      # Formulario para crear tareas
+│   ├── Timeline.tsx      # Vista de línea de tiempo horizontal
+│   └── TimelineTask.tsx  # Tarea en la vista de timeline
+└── store/
+    └── sprinter-store.ts # Zustand store para gestión de estado
+```
 
-**File**: `src/components/sidebar/MainNav.tsx`
+## PASO 3: Especificaciones del Sistema Sprinter
 
-Remove the `<UserWallet />` component from the bottom of the navigation.
+### 3.1 Persistencia de Datos
 
-**Before**:
+**CRÍTICO**: El sistema DEBE persistir datos durante la sesión usando el mismo patrón que el flowchart existente:
 
 ```typescript
-return (
-  <div className="flex h-full flex-1 flex-col">
-    <nav>{/* nav items */}</nav>
-    <UserWallet collapsed={collapsed} /> // ← Remove this
+// Usar idb-keyval para IndexedDB (ver src/lib/persist.ts como referencia)
+import { del, get, set } from "idb-keyval";
+
+const SPRINTER_STORAGE_KEY = "syngulr-sprinter-tasks";
+
+// Implementar funciones similares a:
+// - loadSprinterData()
+// - saveSprinterData()
+// - resetSprinterData()
+```
+
+### 3.2 Gestión de Estado con Zustand
+
+Crear un store similar a `src/lib/store.ts` pero adaptado para tareas:
+
+```typescript
+interface Task {
+  id: string;
+  title: string;
+  type: TaskType;
+  description?: string;
+  column: ColumnId;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+  startDate?: Date;
+  endDate?: Date;
+  status: "todo" | "in-progress" | "testing" | "completed";
+}
+
+type TaskType =
+  | "componente"
+  | "pagina"
+  | "widget"
+  | "estilos"
+  | "diseno"
+  | "api"
+  | "configuracion"
+  | "documentacion";
+
+type ColumnId = "todo" | "in-progress" | "testing" | "completed";
+
+interface SprinterStore {
+  tasks: Task[];
+  addTask: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => void;
+  updateTask: (id: string, updates: Partial<Task>) => void;
+  deleteTask: (id: string) => void;
+  moveTask: (taskId: string, targetColumn: ColumnId, position: number) => void;
+  reorderTaskInColumn: (taskId: string, newPosition: number) => void;
+  // Undo/Redo functionality similar to flow store
+  undo: () => void;
+  redo: () => void;
+}
+```
+
+## PASO 4: Las Cuatro Columnas del Tablero
+
+### Configuración de Columnas
+
+```typescript
+const COLUMNS = [
+  {
+    id: "todo" as const,
+    title: "TO-DO",
+    description: "Tareas pendientes por iniciar",
+    color: "bg-slate-100 dark:bg-slate-900",
+    allowCreate: true, // Solo esta columna permite creación directa
+  },
+  {
+    id: "in-progress" as const,
+    title: "EN DESARROLLO",
+    description: "Tareas en progreso",
+    color: "bg-blue-50 dark:bg-blue-950",
+    allowCreate: false,
+  },
+  {
+    id: "testing" as const,
+    title: "PROBANDO",
+    description: "En proceso de testing/QA",
+    color: "bg-yellow-50 dark:bg-yellow-950",
+    allowCreate: false,
+  },
+  {
+    id: "completed" as const,
+    title: "COMPLETADO",
+    description: "Tareas finalizadas",
+    color: "bg-green-50 dark:bg-green-950",
+    allowCreate: false,
+  },
+] as const;
+```
+
+### Estilo Minimalista
+
+- Usar shadcn/ui Card components
+- Espaciado consistente: gap-4 entre columnas, gap-2 entre tareas
+- Tipografía: column titles text-lg font-medium, task titles text-sm
+- Colores: usar CSS variables de shadcn (no hex hard-coded)
+
+## PASO 5: Especificaciones de las Tareas
+
+### 5.1 Creación de Tareas (Solo en TO-DO)
+
+```typescript
+// TaskForm.tsx - Solo visible en columna TO-DO
+interface TaskFormProps {
+  onSubmit: (task: NewTask) => void;
+}
+
+interface NewTask {
+  title: string; // Input text, required
+  type: TaskType; // Select dropdown, required
+  description?: string; // Textarea, optional
+}
+```
+
+### 5.2 Componente TaskCard
+
+```tsx
+<Card className="group relative">
+  <CardHeader className="p-3">
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex-1 min-w-0">
+        <CardTitle className="text-sm font-medium truncate">
+          {task.title}
+        </CardTitle>
+        <Badge variant="outline" className="mt-1 text-xs">
+          {task.type}
+        </Badge>
+      </div>
+
+      {/* Botón eliminar - visible en hover */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => deleteTask(task.id)}
+      >
+        <Trash2 className="h-3 w-3" />
+      </Button>
+    </div>
+  </CardHeader>
+
+  {task.description && (
+    <CardContent className="p-3 pt-0">
+      <p className="text-xs text-muted-foreground line-clamp-2">
+        {task.description}
+      </p>
+    </CardContent>
+  )}
+</Card>
+```
+
+## PASO 6: Drag and Drop entre Columnas y Filas
+
+### Implementación con DnD Library
+
+```typescript
+// Usar DragDropContext, Droppable, Draggable
+<DragDropContext onDragEnd={handleDragEnd}>
+  <div className="grid grid-cols-4 gap-4">
+    {COLUMNS.map((column) => (
+      <Droppable key={column.id} droppableId={column.id}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={cn(
+              "rounded-lg border p-4 min-h-[500px]",
+              column.color,
+              snapshot.isDraggingOver && "ring-2 ring-primary"
+            )}
+          >
+            <h3 className="text-lg font-medium mb-4">{column.title}</h3>
+
+            {/* Formulario solo en TO-DO */}
+            {column.allowCreate && <TaskForm onSubmit={addTask} />}
+
+            {/* Lista de tareas */}
+            <div className="space-y-2">
+              {getTasksForColumn(column.id).map((task, index) => (
+                <Draggable key={task.id} draggableId={task.id} index={index}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={snapshot.isDragging ? "opacity-50" : ""}
+                    >
+                      <TaskCard task={task} />
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          </div>
+        )}
+      </Droppable>
+    ))}
   </div>
-);
+</DragDropContext>
 ```
 
-**After**:
+### Lógica de handleDragEnd
 
 ```typescript
-return (
-  <nav
-    className={cn(
-      "mt-8 flex-1 flex flex-col gap-1",
-      collapsed ? "px-2" : "px-4"
-    )}
-  >
-    {navItems.map((item) => {
-      // ... nav items
-    })}
-  </nav>
-);
+const handleDragEnd = (result: DropResult) => {
+  const { destination, source, draggableId } = result;
+
+  if (!destination) return;
+
+  if (
+    destination.droppableId === source.droppableId &&
+    destination.index === source.index
+  ) {
+    return; // No movement
+  }
+
+  // Mover entre columnas
+  if (destination.droppableId !== source.droppableId) {
+    moveTask(
+      draggableId,
+      destination.droppableId as ColumnId,
+      destination.index
+    );
+  } else {
+    // Reordenar dentro de la misma columna
+    reorderTaskInColumn(draggableId, destination.index);
+  }
+};
 ```
 
-#### 1.2 Add Top Bar to MainLayout
+## PASO 7: Eliminación de Tareas
 
-**File**: `src/app/layouts/MainLayout.tsx`
+### Icon Button para Eliminar
 
-Add a new top bar positioned at the top-right of the main content area.
+- Usar Trash2 icon de lucide-react
+- Visible solo en hover de la tarjeta
+- Confirmar eliminación con diálogo (opcional pero recomendado)
 
-**Structure**:
+```tsx
+// Opcional: Diálogo de confirmación
+<AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Button variant="ghost" size="icon">
+      <Trash2 className="h-3 w-3" />
+    </Button>
+  </AlertDialogTrigger>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>¿Eliminar tarea?</AlertDialogTitle>
+      <AlertDialogDescription>
+        Esta acción no se puede deshacer.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+      <AlertDialogAction onClick={() => deleteTask(task.id)}>
+        Eliminar
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+## PASO 8: Sistema de Tabs (Tablero y Línea de Tiempo)
+
+### Implementación de Tabs
+
+```tsx
+// page.tsx principal
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+export default function SprinterPage() {
+  return (
+    <div className="container mx-auto max-w-7xl p-6 md:p-8">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
+          Sprinter
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Gestiona tus tareas y proyectos de forma visual
+        </p>
+      </div>
+
+      <Tabs defaultValue="board" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="board" className="gap-2">
+            <LayoutGrid className="h-4 w-4" />
+            Tablero
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Línea de Tiempo
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="board" className="mt-0">
+          <Board />
+        </TabsContent>
+
+        <TabsContent value="timeline" className="mt-0">
+          <Timeline />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+## PASO 9: Línea de Tiempo Horizontal
+
+### Especificaciones de la Timeline
 
 ```typescript
-<div className="flex min-h-screen bg-background text-foreground">
-  <aside>{/* Existing sidebar */}</aside>
+// Timeline.tsx
+interface TimelineProps {
+  tasks: Task[];
+  viewMode: "day" | "week" | "month"; // Selector de granularidad
+  startDate: Date;
+  endDate: Date;
+}
+```
 
-  {/* NEW: Top Bar */}
-  <div className="flex flex-1 flex-col">
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-end border-b border-border bg-card/80 px-6 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <UserWallet collapsed={false} />
-    </header>
+### Componente Timeline
 
-    <main className="flex-1 overflow-hidden bg-background">{children}</main>
+```tsx
+<div className="space-y-6">
+  {/* Controles de vista */}
+  <div className="flex items-center justify-between">
+    <div className="flex gap-2">
+      <Button
+        variant={viewMode === "day" ? "default" : "outline"}
+        size="sm"
+        onClick={() => setViewMode("day")}
+      >
+        Día
+      </Button>
+      <Button
+        variant={viewMode === "week" ? "default" : "outline"}
+        size="sm"
+        onClick={() => setViewMode("week")}
+      >
+        Semana
+      </Button>
+      <Button
+        variant={viewMode === "month" ? "default" : "outline"}
+        size="sm"
+        onClick={() => setViewMode("month")}
+      >
+        Mes
+      </Button>
+    </div>
+
+    <div className="flex gap-2">
+      <Button variant="outline" size="sm" onClick={previousPeriod}>
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Button variant="outline" size="sm" onClick={nextPeriod}>
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+
+  {/* Timeline Grid */}
+  <div className="relative overflow-x-auto">
+    {/* Header con fechas */}
+    <div className="flex border-b">
+      {timelineSegments.map((segment) => (
+        <div
+          key={segment.date.toISOString()}
+          className="min-w-[100px] flex-1 p-2 text-center text-xs font-medium border-r"
+        >
+          {formatDate(segment.date, viewMode)}
+        </div>
+      ))}
+    </div>
+
+    {/* Filas de tareas */}
+    <div className="space-y-1">
+      {tasks.map((task) => (
+        <div key={task.id} className="flex items-center h-12 border-b">
+          {/* Nombre de tarea */}
+          <div className="min-w-[200px] p-2 text-sm font-medium truncate border-r">
+            {task.title}
+            <Badge variant="outline" className="ml-2 text-xs">
+              {getStatusBadge(task.status)}
+            </Badge>
+          </div>
+
+          {/* Barra de progreso en la timeline */}
+          <div className="flex-1 relative">
+            <TimelineTaskBar
+              task={task}
+              startDate={timelineStart}
+              endDate={timelineEnd}
+              viewMode={viewMode}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
   </div>
 </div>
 ```
 
-#### 1.3 Update UserWallet Component
+### TimelineTaskBar Component
 
-**File**: `src/components/sidebar/UserWallet.tsx`
+```tsx
+// Calcula posición y ancho basado en fechas
+const TimelineTaskBar: React.FC<TimelineTaskBarProps> = ({
+  task,
+  startDate,
+  endDate,
+  viewMode,
+}) => {
+  const { left, width } = calculatePosition(
+    task.startDate,
+    task.endDate,
+    startDate,
+    endDate
+  );
 
-Update the component to work in horizontal layout (top bar) instead of vertical (sidebar).
-
-**Changes**:
-
-- Remove `collapsed` prop handling (no longer needed in top bar)
-- Simplify layout to horizontal flex
-- Adjust styling for top bar context
-
-**New Structure**:
-
-```typescript
-export function UserWallet() {
-  const account = useActiveAccount();
-
-  if (!account) {
-    return (
-      <div className="flex items-center gap-3">
-        <WalletConnect />
-      </div>
-    );
-  }
+  const statusColors = {
+    todo: "bg-slate-400",
+    "in-progress": "bg-blue-500",
+    testing: "bg-yellow-500",
+    completed: "bg-green-500",
+  };
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2">
-        <div className="h-2 w-2 rounded-full bg-green-500" />
-        <p className="text-sm font-medium text-muted-foreground">
-          Wallet conectada
-        </p>
-      </div>
-      <WalletConnect />
+    <div
+      className={cn(
+        "absolute h-6 rounded-md cursor-pointer transition-all hover:opacity-80",
+        statusColors[task.status]
+      )}
+      style={{
+        left: `${left}%`,
+        width: `${width}%`,
+      }}
+      title={`${task.title} - ${task.status}`}
+    >
+      <div className="px-2 py-1 text-xs text-white truncate">{task.title}</div>
     </div>
   );
-}
+};
 ```
 
----
+### Información Mostrada en Timeline
 
-## 📋 Task 2: Add Copy Functionality to Contextos Modal
+- **Nombre de la tarea**: truncado si es muy largo
+- **Fechas de ejecución**: startDate y endDate (si están definidas)
+- **Estado actual**: representado por color de la barra
+  - TO-DO: gris (slate)
+  - EN DESARROLLO: azul (blue)
+  - PROBANDO: amarillo (yellow)
+  - COMPLETADO: verde (green)
+- **Tipo de tarea**: mostrado en badge junto al nombre
 
-### Current State
+## Requerimientos Técnicos
 
-- Route: `src/app/(dashboard)/contexts/page.tsx`
-- Uses `NotionItemsList` component to display items
-- Items have an "Abrir" button that opens a modal (needs to be implemented)
-
-### Required Changes
-
-#### 2.1 Create Modal Component
-
-**File**: `src/components/notion/NotionPromptModal.tsx`
-
-Create a new modal component that displays Notion prompt content with copy functionality.
-
-**Requirements**:
-
-- Use Radix UI Dialog component (already available in the project)
-- Display full prompt content
-- Two copy buttons:
-  1. **Copy as Markdown** (icon: `FileText`)
-  2. **Copy as Raw Text** (icon: `Copy`)
-- Use tooltip for each button
-- Show toast notification on copy success
-- Spanish language for all UI text
-
-**Component Structure**:
-
-```typescript
-"use client";
-
-import { useState } from "react";
-import { Copy, FileText } from "lucide-react";
-import { toast } from "sonner";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
-interface NotionPromptModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  content: string;
-}
-
-export function NotionPromptModal({
-  open,
-  onOpenChange,
-  title,
-  content,
-}: NotionPromptModalProps) {
-  const copyAsMarkdown = async () => {
-    // Convert content to markdown format
-    const markdown = `# ${title}\n\n${content}`;
-    await navigator.clipboard.writeText(markdown);
-    toast.success("Copiado como Markdown");
-  };
-
-  const copyAsRawText = async () => {
-    await navigator.clipboard.writeText(content);
-    toast.success("Copiado como texto");
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 space-y-1">
-              <DialogTitle>{title}</DialogTitle>
-              <DialogDescription>
-                Contenido del prompt desde Notion
-              </DialogDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={copyAsMarkdown}
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Copiar como Markdown</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={copyAsRawText}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Copiar texto</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="mt-4 rounded-lg border bg-muted/50 p-4">
-          <pre className="whitespace-pre-wrap font-mono text-sm">{content}</pre>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
-
-#### 2.2 Update NotionItemsList Component
-
-**File**: `src/components/notion/NotionItemsList.tsx`
-
-Add modal state and trigger to open the modal when "Abrir" button is clicked.
-
-**Changes Needed**:
-
-1. Import the new `NotionPromptModal` component
-2. Add state for modal open/close and selected item
-3. Update "Abrir" button to open modal instead of external link
-4. Render the modal component
-
-**Key Code Changes**:
-
-```typescript
-import { NotionPromptModal } from "./NotionPromptModal";
-
-export function NotionItemsList({ ... }) {
-  const [selectedItem, setSelectedItem] = useState<NotionPage | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const handleOpenModal = (item: NotionPage) => {
-    setSelectedItem(item);
-    setModalOpen(true);
-  };
-
-  return (
-    <>
-      <section>
-        {/* ... existing list code ... */}
-
-        {/* Update button in the map */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleOpenModal(item)}
-          aria-label="Abrir prompt"
-        >
-          Abrir
-        </Button>
-      </section>
-
-      {/* Add modal */}
-      {selectedItem && (
-        <NotionPromptModal
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-          title={selectedItem.title}
-          content={selectedItem.description || "Sin contenido"}
-        />
-      )}
-    </>
-  );
-}
-```
-
-#### 2.3 Ensure Dialog Component Exists
-
-**File**: `src/components/ui/dialog.tsx`
-
-If this file doesn't exist, create it using Shadcn's Dialog component:
+### Dependencias a Instalar
 
 ```bash
-# Run this command if dialog doesn't exist
-npx shadcn@latest add dialog
+# Si usas @hello-pangea/dnd (fork mantenido)
+pnpm add @hello-pangea/dnd
+
+# O si usas @dnd-kit (recomendado moderno)
+pnpm add @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities
+
+# Para persistencia (ya instalado)
+# idb-keyval
+
+# Para gestión de estado (ya instalado)
+# zustand
+
+# Para validación
+pnpm add zod
+
+# Para manejo de fechas
+pnpm add date-fns
 ```
 
----
-
-## 📋 Task 3: Create Generator Route
-
-### Required Changes
-
-#### 3.1 Create Generator Page
-
-**File**: `src/app/(dashboard)/generator/page.tsx`
-
-Create a new page for the prompt generator with a chat-like interface.
-
-**Requirements**:
-
-- Chat interface for talking with an AI agent
-- Input area for user messages
-- Display area for conversation history
-- Spanish language
-- Clean, modern UI matching existing design system
-
-**Complete Component**:
+### TypeScript Types
 
 ```typescript
-"use client";
+// src/types/sprinter.ts
+import { z } from "zod";
 
-import { useState } from "react";
-import { Send, Sparkles } from "lucide-react";
-import type { Metadata } from "next";
+export const taskTypeSchema = z.enum([
+  "componente",
+  "pagina",
+  "widget",
+  "estilos",
+  "diseno",
+  "api",
+  "configuracion",
+  "documentacion",
+]);
 
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+export const columnIdSchema = z.enum([
+  "todo",
+  "in-progress",
+  "testing",
+  "completed",
+]);
 
-// Note: Metadata export should be in a separate file for client components
-// For now, this is a client component, so no metadata export
+export const taskSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, "El título es requerido"),
+  type: taskTypeSchema,
+  description: z.string().optional(),
+  column: columnIdSchema,
+  position: z.number(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
+  status: columnIdSchema,
+});
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
-
-export default function GeneratorPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "¡Hola! Soy tu asistente para generar prompts especializados. ¿En qué tipo de prompt te puedo ayudar hoy?",
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    // TODO: Integrate with your AI service
-    // For now, simulate a response
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content:
-          "Esta es una respuesta de ejemplo. Integra aquí tu servicio de IA para generar prompts especializados.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
-    }, 1000);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  return (
-    <div className="flex h-full flex-col bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <Sparkles className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">Generador de Prompts</h1>
-            <p className="text-sm text-muted-foreground">
-              Crea prompts especializados con ayuda de IA
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-3xl space-y-6">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                "flex gap-3",
-                message.role === "user" ? "justify-end" : "justify-start"
-              )}
-            >
-              {message.role === "assistant" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                </div>
-              )}
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-lg px-4 py-3",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
-                )}
-              >
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {message.content}
-                </p>
-                <p
-                  className={cn(
-                    "mt-1 text-xs",
-                    message.role === "user"
-                      ? "text-primary-foreground/70"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {message.timestamp.toLocaleTimeString("es-ES", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-              {message.role === "user" && (
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary">
-                  <span className="text-xs font-semibold text-primary-foreground">
-                    TÚ
-                  </span>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Sparkles className="h-4 w-4 animate-pulse text-primary" />
-              </div>
-              <div className="rounded-lg bg-muted px-4 py-3">
-                <div className="flex gap-1">
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Input Area */}
-      <div className="border-t border-border bg-card/50 px-6 py-4">
-        <div className="mx-auto max-w-3xl">
-          <div className="flex gap-3">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe el tipo de prompt que necesitas..."
-              className="min-h-[60px] resize-none"
-              disabled={isLoading}
-            />
-            <Button
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              size="icon"
-              className="h-[60px] w-[60px] flex-shrink-0"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Presiona Enter para enviar, Shift + Enter para nueva línea
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+export type Task = z.infer<typeof taskSchema>;
+export type TaskType = z.infer<typeof taskTypeSchema>;
+export type ColumnId = z.infer<typeof columnIdSchema>;
 ```
 
-#### 3.2 Add Navigation Link
+## Principios de Diseño y UX
 
-**File**: `src/components/sidebar/MainNav.tsx`
+### Minimalismo y Elegancia
 
-Add the new Generator route to the navigation menu.
+1. **Espaciado consistente**: Usar escala 2,3,4,6,8,10,12
+2. **Tipografía clara**:
+   - Títulos de página: text-2xl md:text-3xl font-semibold
+   - Títulos de sección: text-lg font-medium
+   - Cuerpo: text-sm md:text-base
+3. **Colores**: Solo CSS variables de shadcn, NO hex hard-coded
+4. **Feedback visual**:
+   - Hover states en todos los elementos interactivos
+   - Drag preview con opacidad reducida
+   - Drop zones destacados durante drag
+5. **Responsive**: Mobile-first, funcional en todas las pantallas
 
-**Add to navItems array**:
+### Accesibilidad
 
-```typescript
-import {
-  Archive,
-  Home,
-  Layers,
-  Settings,
-  Sparkles,
-  Workflow,
-} from "lucide-react";
+- Todos los botones con aria-label apropiado
+- Navegación por teclado en formularios
+- Focus visible en todos los elementos interactivos
+- Screen reader friendly
 
+### Performance
+
+- Usar React.memo en TaskCard para evitar re-renders innecesarios
+- Virtualización si hay >100 tareas (react-window)
+- Debounce en auto-save (300ms)
+- Optimistic UI updates
+
+## Testing y Validación
+
+### Casos de Prueba Esenciales
+
+1. ✅ Crear tarea en TO-DO con todos los campos
+2. ✅ Mover tarea entre columnas con drag-and-drop
+3. ✅ Reordenar tareas dentro de la misma columna
+4. ✅ Eliminar tarea con confirmación
+5. ✅ Persistencia: refrescar página y verificar datos
+6. ✅ Cambiar entre tabs Tablero/Timeline
+7. ✅ Timeline muestra tareas con fechas correctamente
+8. ✅ Cambiar vista de timeline (día/semana/mes)
+9. ✅ Navegación temporal en timeline (anterior/siguiente)
+10. ✅ Responsive en móvil y tablet
+
+## Entregables
+
+### Archivos a Crear
+
+1. `src/app/(dashboard)/sprinter/page.tsx` - Página principal con tabs
+2. `src/app/(dashboard)/sprinter/components/Board.tsx` - Tablero Kanban
+3. `src/app/(dashboard)/sprinter/components/Column.tsx` - Columna individual
+4. `src/app/(dashboard)/sprinter/components/TaskCard.tsx` - Tarjeta de tarea
+5. `src/app/(dashboard)/sprinter/components/TaskForm.tsx` - Formulario de creación
+6. `src/app/(dashboard)/sprinter/components/Timeline.tsx` - Vista de timeline
+7. `src/app/(dashboard)/sprinter/components/TimelineTaskBar.tsx` - Barra de tarea en timeline
+8. `src/app/(dashboard)/sprinter/store/sprinter-store.ts` - Zustand store
+9. `src/lib/sprinter-persist.ts` - Funciones de persistencia
+10. `src/types/sprinter.ts` - TypeScript types y schemas
+
+### Documentación Adicional
+
+- Comentarios JSDoc en funciones complejas
+- README.md en la carpeta sprinter explicando arquitectura
+- Ejemplos de uso del store
+- Guía de estilos aplicados
+
+## Checklist Final
+
+Antes de considerar la tarea completa, verifica:
+
+- [ ] react-beautiful-dnd (o alternativa) documentado y comprendido
+- [ ] Ruta /sprinter creada y accesible desde navegación
+- [ ] Las 4 columnas funcionan correctamente
+- [ ] Creación de tareas solo en TO-DO
+- [ ] Drag-and-drop funcional entre columnas y dentro de columnas
+- [ ] Eliminación de tareas con botón de icono
+- [ ] Sistema de tabs implementado (Tablero y Línea de Tiempo)
+- [ ] Timeline horizontal con fechas, estados y tipos visibles
+- [ ] Persistencia de datos funcionando con IndexedDB
+- [ ] Estado global con Zustand funcionando
+- [ ] Diseño minimalista usando shadcn/ui
+- [ ] Responsive en móvil, tablet y desktop
+- [ ] TypeScript sin errores
+- [ ] Accesibilidad básica implementada
+- [ ] Performance optimizada (memo, debounce)
+
+## Notas Adicionales
+
+### Integración con Navegación
+
+Actualizar `src/components/sidebar/MainNav.tsx` para incluir enlace a Sprinter:
+
+```tsx
 const navItems = [
+  // ... items existentes
   {
-    href: "/",
-    label: "Inicio",
-    icon: Home,
-  },
-  {
-    href: "/flow",
-    label: "Diagrama",
-    icon: Workflow,
-  },
-  {
-    href: "/artefactos",
-    label: "Artefactos",
-    icon: Archive,
-  },
-  {
-    href: "/contexts",
-    label: "Contextos",
-    icon: Layers,
-  },
-  {
-    href: "/generator", // ← Add this
-    label: "Generador", // ← Add this
-    icon: Sparkles, // ← Add this
-  },
-  {
-    href: "/settings",
-    label: "Configuración",
-    icon: Settings,
+    title: "Sprinter",
+    href: "/sprinter",
+    icon: KanbanSquare, // de lucide-react
+    description: "Gestiona tus proyectos",
   },
 ];
 ```
 
----
+### Metadata de la Página
 
-## ✅ Validation Checklist
-
-After completing all tasks, verify:
-
-### Task 1: Wallet Widget
-
-- [ ] Wallet widget removed from sidebar bottom
-- [ ] Top bar added to MainLayout with wallet widget
-- [ ] Top bar is sticky and at top-right
-- [ ] Wallet widget displays correctly when connected
-- [ ] Wallet widget displays WalletConnect button when disconnected
-- [ ] No layout shifts or visual glitches
-
-### Task 2: Contextos Modal
-
-- [ ] Modal opens when clicking "Abrir" button
-- [ ] Modal displays full prompt content
-- [ ] Copy as Markdown button works (with icon and tooltip)
-- [ ] Copy as Raw Text button works (with icon and tooltip)
-- [ ] Toast notification appears on successful copy
-- [ ] Modal can be closed
-- [ ] All text is in Spanish
-
-### Task 3: Generator Route
-
-- [ ] New route `/generator` is accessible
-- [ ] Page displays in dashboard layout with top bar
-- [ ] Chat interface is functional
-- [ ] User can type and send messages
-- [ ] Messages display correctly (user on right, assistant on left)
-- [ ] Loading state shows when processing
-- [ ] Navigation link appears in sidebar
-- [ ] Enter key sends message
-- [ ] Shift + Enter creates new line
-- [ ] All UI text is in Spanish
-
----
-
-## 🚨 Important Constraints
-
-1. **DO NOT modify** any files not explicitly mentioned in the tasks
-2. **DO NOT change** existing functionality outside of these tasks
-3. **DO NOT remove** any existing features
-4. **DO NOT modify** authentication or security code
-5. **DO NOT change** the color scheme or theme system
-6. **MAINTAIN** all existing TypeScript types
-7. **MAINTAIN** Spanish language for all UI text
-8. **TEST** that the build completes successfully after changes
-
----
-
-## 🔧 Technical Requirements
-
-- **TypeScript**: Use proper types for all components and props
-- **Imports**: Use `@/` path alias for all imports
-- **Components**: Follow existing component patterns in the codebase
-- **Styling**: Use Tailwind CSS classes only
-- **Icons**: Use `lucide-react` icons only
-- **Toasts**: Use `sonner` library for notifications
-- **Tooltips**: Use Radix UI tooltip component from `@/components/ui/tooltip`
-
----
-
-## 📚 File References
-
-### Key Files to Modify
-
-1. `src/app/layouts/MainLayout.tsx` - Add top bar
-2. `src/components/sidebar/MainNav.tsx` - Remove UserWallet, add Generator link
-3. `src/components/sidebar/UserWallet.tsx` - Simplify for top bar usage
-4. `src/components/notion/NotionItemsList.tsx` - Add modal functionality
-5. `src/components/notion/NotionPromptModal.tsx` - CREATE NEW
-6. `src/app/(dashboard)/generator/page.tsx` - CREATE NEW
-
-### Key Components Already Available
-
-- `Button` - `@/components/ui/button`
-- `Textarea` - `@/components/ui/textarea`
-- `Tooltip` - `@/components/ui/tooltip`
-- `Dialog` - `@/components/ui/dialog` (may need to be added)
-
----
-
-## 🎯 Expected Outcome
-
-After completing all tasks:
-
-1. **Wallet widget** appears in the top-right corner of the dashboard in a sticky top bar
-2. **Contextos page** allows viewing prompts in a modal with copy functionality
-3. **New Generator route** provides a chat interface for creating specialized prompts
-4. **All features** work seamlessly with existing authentication and theme system
-5. **Build succeeds** with no errors or warnings
-6. **All UI text** is in Spanish
-
----
-
-## 🚀 Build & Test Commands
-
-```bash
-# Type check
-pnpm typecheck
-
-# Build
-pnpm build
-
-# Run dev server
-pnpm dev
-
-# Lint
-pnpm lint
+```typescript
+export const metadata: Metadata = {
+  title: "Sprinter - Gestión de Proyectos",
+  description:
+    "Sistema de gestión de tareas con tablero Kanban y línea de tiempo",
+};
 ```
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2025-01-16  
-**Status**: Ready for Implementation
+## Conclusión
+
+Este prompt debe ser ejecutado secuencialmente, validando cada paso antes de continuar al siguiente. La implementación debe ser incremental, probando cada componente de forma aislada antes de integrarlo al sistema completo.
+
+**RECORDATORIO FINAL**: Si en cualquier momento no puedes acceder a la documentación requerida o encuentras limitaciones técnicas, DETÉN la implementación y notifica al usuario inmediatamente.
+
+¡Éxito con la implementación! 🚀
