@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import type { NotionFilter, NotionPage, NotionSort } from "@/types/notion";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NotionPromptModal } from "@/components/notion/NotionPromptModal";
 
 interface NotionItemsListProps {
   databaseId: string;
@@ -54,6 +56,31 @@ async function fetchNotionDatabase({
   return data.items ?? [];
 }
 
+async function fetchNotionMarkdown({
+  pageId,
+  signal,
+}: {
+  pageId: string;
+  signal?: AbortSignal;
+}) {
+  const response = await fetch("/api/notion/page", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ pageId }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || "No se pudo cargar el contenido.");
+  }
+
+  const data = (await response.json()) as { markdown: string };
+  return data.markdown;
+}
+
 export function NotionItemsList({
   databaseId,
   filter,
@@ -66,6 +93,9 @@ export function NotionItemsList({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedItem, setSelectedItem] = useState<NotionPage | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState("Sin contenido");
 
   const filterKey = useMemo(() => JSON.stringify(filter ?? null), [filter]);
   const sortsKey = useMemo(() => JSON.stringify(sorts ?? null), [sorts]);
@@ -125,8 +155,30 @@ export function NotionItemsList({
     });
   }, [items, searchTerm]);
 
+  const handleOpenModal = useCallback(async (item: NotionPage) => {
+    setSelectedItem(item);
+    setModalContent("Cargando contenido...");
+    setModalOpen(true);
+    try {
+      const markdown = await fetchNotionMarkdown({ pageId: item.id });
+      setModalContent(markdown.trim() || "Sin contenido");
+    } catch (requestError) {
+      console.error("Error fetching Notion page:", requestError);
+      setModalContent("No se pudo cargar el contenido.");
+      toast.error("No se pudo cargar el contenido desde Notion");
+    }
+  }, []);
+
+  const handleCloseModal = useCallback((open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      setSelectedItem(null);
+      setModalContent("Sin contenido");
+    }
+  }, []);
+
   return (
-    <section className={cn("space-y-4", className)}>
+    <section className={cn("space-y-6", className)}>
       {showSearch ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Input
@@ -141,12 +193,12 @@ export function NotionItemsList({
         <p className="text-sm text-destructive">{error}</p>
       ) : null}
 
-      <div role="list" className="divide-y divide-border/60">
+      <div role="list" className="flex flex-col gap-4">
         {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-md bg-muted/40" />
-            <Skeleton className="h-16 w-full rounded-md bg-muted/40" />
-            <Skeleton className="h-16 w-full rounded-md bg-muted/40" />
+          <div className="space-y-4">
+            <Skeleton className="h-[132px] w-full rounded-2xl bg-muted/40" />
+            <Skeleton className="h-[132px] w-full rounded-2xl bg-muted/40" />
+            <Skeleton className="h-[132px] w-full rounded-2xl bg-muted/40" />
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -159,69 +211,80 @@ export function NotionItemsList({
             <article
               key={item.id}
               role="listitem"
-              className="group relative flex items-start gap-3 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40"
+              className="group relative flex w-full flex-col gap-4 rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:border-primary/50 focus-within:shadow-md sm:p-6"
             >
-              {item.icon ? (
-                <span aria-hidden="true" className="mt-1 text-lg">
-                  {item.icon}
-                </span>
-              ) : null}
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <h3 className="font-medium text-sm text-foreground">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-1 items-start gap-3">
+                  {item.icon ? (
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 text-xl transition-transform duration-200 group-hover:scale-110"
+                    >
+                      {item.icon}
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 h-8 w-8 rounded-full bg-muted/60"
+                    />
+                  )}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold tracking-tight text-foreground">
                       {item.title}
                     </h3>
                     {item.description ? (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm leading-relaxed text-muted-foreground">
                         {item.description}
                       </p>
                     ) : null}
                   </div>
-                  <div className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      aria-label="Abrir en Notion"
-                    >
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs"
-                      >
-                        Abrir
-                      </a>
-                    </Button>
-                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {item.status ? (
-                    <Badge
-                      variant="outline"
-                      className="text-[11px] font-normal uppercase tracking-wide"
-                    >
-                      {item.status}
-                    </Badge>
-                  ) : null}
-                  <MetaItem label="Creado" value={item.createdTime} />
-                  <MetaItem label="Actualizado" value={item.lastEditedTime} />
-                  {item.tags?.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="outline"
-                      className="text-[11px] font-normal"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
+                <div className="flex items-start gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    className="rounded-full px-4 text-xs font-medium transition-transform duration-200 hover:-translate-y-0.5"
+                    aria-label="Abrir artefacto"
+                    onClick={() => handleOpenModal(item)}
+                  >
+                    Abrir
+                  </Button>
                 </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {item.status ? (
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-border/60 bg-background/40 px-3 py-1 text-[11px] font-medium uppercase tracking-wide"
+                  >
+                    {item.status}
+                  </Badge>
+                ) : null}
+                <MetaItem label="Creado" value={item.createdTime} />
+                <MetaItem label="Actualizado" value={item.lastEditedTime} />
+                {item.tags?.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className="rounded-full border-border/60 bg-background/40 px-3 py-1 text-[11px] font-medium"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
               </div>
             </article>
           ))
         )}
       </div>
+      {selectedItem ? (
+        <NotionPromptModal
+          open={modalOpen}
+          onOpenChange={handleCloseModal}
+          title={selectedItem.title}
+          content={modalContent}
+        />
+      ) : null}
     </section>
   );
 }

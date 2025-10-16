@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { PanelLeftClose, PanelRightClose } from "lucide-react";
+import { Toaster } from "sonner";
 
 import { MainNav } from "@/components/sidebar/MainNav";
+import { UserWallet } from "@/components/sidebar/UserWallet";
 import { cn } from "@/lib/utils";
-import { PanelLeftClose, PanelRightClose } from "lucide-react";
-import Link from "next/link";
-import { Toaster } from "sonner";
-import { useTheme } from "next-themes";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -16,11 +16,6 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const { theme } = useTheme();
-
-  useEffect(() => {
-    console.log(theme);
-  }, [theme]);
 
   return (
     <>
@@ -48,52 +43,46 @@ export function MainLayout({ children }: MainLayoutProps) {
               <div
                 className={cn(
                   "relative flex-shrink-0 transition-all duration-200",
-                  collapsed ? "h-6 w-6" : "h-8 w-[151px]"
+                  collapsed ? "h-8 w-8" : "h-8 w-[151px]"
                 )}
               >
                 {collapsed ? (
                   <>
-                    {theme === "light" ? (
-                      <Image
-                        src="/images/icon.svg"
-                        alt="Syngulr"
-                        fill
-                        className="block object-contain"
-                        sizes="24px"
-                        priority
-                      />
-                    ) : (
-                      <Image
-                        src="/images/icon.svg"
-                        alt="Syngulr"
-                        fill
-                        className="object-contain block"
-                        sizes="24px"
-                        priority
-                      />
-                    )}
+                    <Image
+                      src="/images/icon.svg"
+                      alt="Syngulr"
+                      fill
+                      className="block object-contain dark:hidden"
+                      sizes="32px"
+                      priority
+                    />
+                    <Image
+                      src="/images/icon-black.svg"
+                      alt="Syngulr"
+                      fill
+                      className="hidden object-contain dark:block"
+                      sizes="32px"
+                      priority
+                    />
                   </>
                 ) : (
                   <>
-                    {theme === "light" ? (
-                      <Image
-                        src="/images/logo-black.svg"
-                        alt="Syngulr"
-                        fill
-                        className="block object-contain"
-                        sizes="151px"
-                        priority
-                      />
-                    ) : (
-                      <Image
-                        src="/images/logo.svg"
-                        alt="Syngulr"
-                        fill
-                        className="block object-contain"
-                        sizes="151px"
-                        priority
-                      />
-                    )}
+                    <Image
+                      src="/images/logo.svg"
+                      alt="Syngulr"
+                      fill
+                      className="hidden object-contain dark:block"
+                      sizes="151px"
+                      priority
+                    />
+                    <Image
+                      src="/images/logo-black.svg"
+                      alt="Syngulr"
+                      fill
+                      className="block object-contain dark:hidden"
+                      sizes="151px"
+                      priority
+                    />
                   </>
                 )}
               </div>
@@ -105,7 +94,7 @@ export function MainLayout({ children }: MainLayoutProps) {
               }
               className={cn(
                 "rounded-md border border-border bg-background/70 p-1.5 text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                collapsed && "w-full flex items-center justify-center p-2"
+                collapsed && "flex w-full items-center justify-center p-2"
               )}
               onClick={() => setCollapsed((prev) => !prev)}
             >
@@ -118,7 +107,13 @@ export function MainLayout({ children }: MainLayoutProps) {
           </div>
           <MainNav collapsed={collapsed} />
         </aside>
-        <main className="flex-1 overflow-hidden bg-background">{children}</main>
+
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-10 flex h-16 items-center justify-end gap-4 border-b border-border bg-card/80 px-6 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+            <UserWallet />
+          </header>
+          <main className="flex-1 overflow-hidden bg-background">{children}</main>
+        </div>
       </div>
       <Toaster richColors />
     </>

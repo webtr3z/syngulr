@@ -18,7 +18,7 @@ export default function ContextsPage() {
         </p>
       </header>
 
-      <section className="grid gap-6 lg:grid-cols-2">
+      <section className="">
         <NotionItemsList databaseId="289459944afa80e8b8afec1218249360" />
       </section>
     </main>

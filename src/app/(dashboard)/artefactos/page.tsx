@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { NotionItemsList } from "@/components/notion/NotionItemsList";
 
 export const metadata: Metadata = {
   title: "Artefactos",
