@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import FlowCanvas from "./FlowCanvas";
+import { FlowOnboardingModal } from "@/components/flow/FlowOnboardingModal";
 
 export const metadata: Metadata = {
   title: "Editor de diagramas de flujo",
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 export default function FlowPage() {
   return (
     <div className="relative flex h-dvh w-full flex-col bg-background text-foreground">
+      <FlowOnboardingModal />
       <div className="flex-1">
         <FlowCanvas />
       </div>

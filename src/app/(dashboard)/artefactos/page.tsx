@@ -19,8 +19,6 @@ export default function ArtefactosPage() {
         </p>
       </header>
 
-      <NotionItemsList databaseId="289459944afa80e8b8afec1218249360" />
-
       <section className="rounded-lg border border-border bg-card/40 p-6 shadow-sm">
         <h2 className="text-lg font-medium text-foreground">Estado actual</h2>
         <p className="mt-2 text-sm text-muted-foreground">

@@ -13,6 +13,11 @@ const SPRING_STIFFNESS = 0.02;
 const SPRING_DAMPING = 0.78;
 const SNAP_THRESHOLD = 0.25;
 
+const pseudoRandom = (seed: number) => {
+  const value = Math.sin(seed) * 10000;
+  return value - Math.floor(value);
+};
+
 export function AnimatedCursor() {
   const cursorRef = useRef<HTMLDivElement | null>(null);
   const targetPosition = useRef({ x: 0, y: 0 });
@@ -145,12 +150,15 @@ export function AnimatedCursor() {
     return Array.from({ length: PARTICLE_COUNT }, (_, index) => {
       const radialLayer = (index % 60) / 60;
       const radius =
-        24 + radialLayer * 40 + Math.sin(index * 0.35) * 6 + Math.random() * 4;
-      const angle = angleStep * index + Math.random() * 0.6;
+        24 +
+        radialLayer * 40 +
+        Math.sin(index * 0.35) * 6 +
+        pseudoRandom(index + 1) * 4;
+      const angle = angleStep * index + pseudoRandom(index + 11) * 0.6;
       const offsetX = Math.cos(angle) * radius;
       const offsetY = Math.sin(angle) * radius;
-      const delay = Math.random() * -3;
-      const duration = 1.6 + Math.random() * 1.8;
+      const delay = pseudoRandom(index + 21) * -3;
+      const duration = 1.6 + pseudoRandom(index + 31) * 1.8;
 
       return {
         style: {

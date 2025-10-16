@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState, type ReactNode } from "react";
+import Image from "next/image";
+
 import { MainNav } from "@/components/sidebar/MainNav";
 import { cn } from "@/lib/utils";
 import { PanelLeftClose, PanelRightClose } from "lucide-react";
-import Image from "next/image";
-import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { Toaster } from "sonner";
+import { useTheme } from "next-themes";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -13,6 +16,11 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    console.log(theme);
+  }, [theme]);
 
   return (
     <>
@@ -29,44 +37,67 @@ export function MainLayout({ children }: MainLayoutProps) {
               collapsed && "flex-col gap-3 px-2"
             )}
           >
-            {/* <Link
+            <Link
               href="/"
               className={cn(
                 "flex items-center gap-3 text-sm font-semibold tracking-tight transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 collapsed && "justify-center gap-0"
               )}
+              aria-label="Ir al inicio"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-foreground">
-                sy
-              </span>
-              {!collapsed && (
-                <span className="text-2xl font-medium">syngulr</span>
-              )}
-            </Link> */}
-            <div className={cn("relative h-8 w-[151px]", collapsed && "w-8")}>
-              <Image
-                src="/images/logo.svg"
-                alt="Syngulr"
-                fill
+              <div
                 className={cn(
-                  "hidden object-contain dark:block",
-                  collapsed && "p-0"
+                  "relative flex-shrink-0 transition-all duration-200",
+                  collapsed ? "h-6 w-6" : "h-8 w-[151px]"
                 )}
-                sizes="151px"
-                priority
-              />
-              <Image
-                src="/images/logo-black.svg"
-                alt="Syngulr"
-                fill
-                className={cn(
-                  "block object-contain dark:hidden",
-                  collapsed && "p-0"
+              >
+                {collapsed ? (
+                  <>
+                    {theme === "light" ? (
+                      <Image
+                        src="/images/icon.svg"
+                        alt="Syngulr"
+                        fill
+                        className="block object-contain"
+                        sizes="24px"
+                        priority
+                      />
+                    ) : (
+                      <Image
+                        src="/images/icon.svg"
+                        alt="Syngulr"
+                        fill
+                        className="object-contain block"
+                        sizes="24px"
+                        priority
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {theme === "light" ? (
+                      <Image
+                        src="/images/logo-black.svg"
+                        alt="Syngulr"
+                        fill
+                        className="block object-contain"
+                        sizes="151px"
+                        priority
+                      />
+                    ) : (
+                      <Image
+                        src="/images/logo.svg"
+                        alt="Syngulr"
+                        fill
+                        className="block object-contain"
+                        sizes="151px"
+                        priority
+                      />
+                    )}
+                  </>
                 )}
-                sizes="151px"
-                priority
-              />
-            </div>
+              </div>
+            </Link>
             <button
               type="button"
               aria-label={

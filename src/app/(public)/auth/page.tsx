@@ -27,7 +27,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (isAccountConnected && !isLoading && hasNFT) {
-      router.push("/flow");
+      router.push("/overview");
     }
   }, [hasNFT, isAccountConnected, isLoading, router]);
 

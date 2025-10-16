@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Archive, Home, Layers, Settings, Workflow } from "lucide-react";
+import {
+  Archive,
+  Home,
+  LayoutDashboard,
+  Layers,
+  Settings,
+  Workflow,
+} from "lucide-react";
 import { UserWallet } from "./UserWallet";
 
 const navItems = [
@@ -11,6 +18,11 @@ const navItems = [
     href: "/",
     label: "Inicio",
     icon: Home,
+  },
+  {
+    href: "/overview",
+    label: "Resumen",
+    icon: LayoutDashboard,
   },
   {
     href: "/flow",
@@ -51,7 +63,10 @@ export function MainNav({ collapsed = false }: MainNavProps) {
       >
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link
